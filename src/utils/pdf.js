@@ -267,19 +267,34 @@ export async function generatePDF(intervention, settings = {}) {
 
   const filename = `${intervention.numero}_${(intervention.clientNom || 'client').replace(/\s+/g, '_')}.pdf`;
 
-  // Sur mobile : ouvre le menu de partage natif (WhatsApp, Gmail, SMS…)
-  // Sur PC : télécharge le fichier
-  if (navigator.canShare) {
+  // 1. Essayer le partage natif avec fichier (Android Chrome moderne, iOS Safari)
+  try {
     const blob = doc.output('blob');
     const file = new File([blob], filename, { type: 'application/pdf' });
-    if (navigator.canShare({ files: [file] })) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title: `Fiche intervention ${intervention.numero}`,
         text: `Intervention du ${formatDate(intervention.dateIntervention)} — ${intervention.clientNom || ''}`,
         files: [file],
       });
-      return;
+      return; // succès
     }
+  } catch (e) {
+    if (e.name === 'AbortError') return; // l'utilisateur a annulé = normal
+    // sinon on continue vers le fallback
   }
-  doc.save(filename);
+
+  // 2. Fallback : ouvrir le PDF dans un nouvel onglet (Android sans Web Share, PC)
+  try {
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch {
+    // Dernier recours
+    doc.save(filename);
+  }
 }

@@ -23,9 +23,13 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
       const settings = loadSettings();
       await generatePDF(intervention, settings);
     } catch (e) {
-      alert('Erreur lors de la génération du PDF');
+      if (e.name !== 'AbortError') {
+        alert(`Erreur PDF : ${e.message || 'inconnue'}`);
+        console.error('PDF error:', e);
+      }
+    } finally {
+      setSharing(false);
     }
-    setSharing(false);
   };
 
   const duree = (() => {
