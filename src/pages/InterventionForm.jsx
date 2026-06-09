@@ -319,9 +319,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
 
         {/* Machine */}
         <Section title="🔩 Machine">
-          <Field label="Type de machine *">
-            <input value={form.machine} onChange={e => set('machine', e.target.value)} style={inputStyle} placeholder="Ex: Pelleteuse, Compresseur, Grue..." />
-          </Field>
           <Field label="Marque">
             <input value={form.marque} onChange={e => set('marque', e.target.value)} style={inputStyle} placeholder="Ex: Caterpillar, Atlas Copco..." />
           </Field>

@@ -84,7 +84,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
 
         {/* Machine */}
         <Card title="🔩 Machine">
-          <Row label="Type" value={intervention.machine} />
           <Row label="Marque / Modèle" value={[intervention.marque, intervention.modele].filter(Boolean).join(' ')} />
           <Row label="N° de série" value={intervention.numeroSerie} />
         </Card>

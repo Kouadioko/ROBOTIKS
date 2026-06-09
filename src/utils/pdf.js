@@ -141,7 +141,6 @@ export async function generatePDF(intervention, settings = {}) {
 
   // ─── MACHINE ─────────────────────────────────────────
   sectionTitle('MACHINE');
-  field('Type', intervention.machine);
   const marqueModel = [intervention.marque, intervention.modele].filter(Boolean).join(' ');
   field('Marque / Modèle', marqueModel);
   field('N° de série', intervention.numeroSerie);
