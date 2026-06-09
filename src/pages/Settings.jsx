@@ -26,13 +26,17 @@ export default function Settings({ onBack }) {
   const [saved, setSaved] = useState(false);
   const logoInputRef = useRef();
 
-  const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
+  const set = (k, v) => setSettings(s => {
+    const updated = { ...s, [k]: v };
+    saveSettings(updated); // auto-sauvegarde à chaque frappe
+    return updated;
+  });
 
   const handleLogo = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => set('logo', ev.target.result);
+    reader.onload = (ev) => set('logo', ev.target.result); // set() auto-sauvegarde
     reader.readAsDataURL(file);
   };
 
