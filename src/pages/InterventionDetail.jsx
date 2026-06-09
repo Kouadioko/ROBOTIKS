@@ -106,20 +106,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           <Row label="Travaux effectués" value={intervention.travauxEffectues} />
         </Card>
 
-        {/* Pièces */}
-        {intervention.pieces?.length > 0 && (
-          <Card title="🔧 Pièces utilisées">
-            {intervention.pieces.map(p => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
-                <div>
-                  <div style={{ fontSize: 14 }}>{p.designation}</div>
-                  {p.reference && <div style={{ fontSize: 12, color: '#888' }}>Réf: {p.reference}</div>}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#e65100' }}>×{p.quantite}</div>
-              </div>
-            ))}
-          </Card>
-        )}
 
         {/* Temps */}
         {(intervention.heureDebut || intervention.heureFin) && (
@@ -157,12 +143,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           </Card>
         )}
 
-        {/* Notes */}
-        {intervention.notes && (
-          <Card title="📝 Notes internes">
-            <div style={{ fontSize: 14, color: '#555', whiteSpace: 'pre-wrap' }}>{intervention.notes}</div>
-          </Card>
-        )}
       </div>
 
       {/* Actions fixes en bas */}

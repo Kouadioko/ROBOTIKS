@@ -168,38 +168,6 @@ export async function generatePDF(intervention, settings = {}) {
   multiField('Travaux effectués', intervention.travauxEffectues);
   y += 3;
 
-  // ─── PIÈCES ──────────────────────────────────────────
-  if (intervention.pieces?.length > 0) {
-    sectionTitle('PIÈCES UTILISÉES');
-    // En-tête tableau
-    doc.setFillColor(...DARK);
-    doc.rect(margin, y, W - margin * 2, 6, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Désignation', margin + 2, y + 4);
-    doc.text('Référence', margin + 100, y + 4);
-    doc.text('Qté', W - margin - 10, y + 4, { align: 'right' });
-    y += 7;
-
-    intervention.pieces.forEach((p, idx) => {
-      checkSpace(7);
-      if (idx % 2 === 0) {
-        doc.setFillColor(250, 250, 250);
-        doc.rect(margin, y - 1, W - margin * 2, 6, 'F');
-      }
-      doc.setTextColor(...DARK);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(p.designation || '', margin + 2, y + 4);
-      doc.text(p.reference || '', margin + 100, y + 4);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(p.quantite || 1), W - margin - 10, y + 4, { align: 'right' });
-      y += 6;
-    });
-    y += 5;
-  }
-
   // ─── TEMPS ───────────────────────────────────────────
   if (intervention.heureDebut || intervention.heureFin) {
     sectionTitle('TEMPS D\'INTERVENTION');

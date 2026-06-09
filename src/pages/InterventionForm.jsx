@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
 import { loadInterventions, saveInterventions, loadClients, saveClients, generateId, generateNumero } from '../store';
+// generateId still used for client auto-save
 
 const STATUTS = [
   { value: 'en_cours', label: 'En cours' },
@@ -187,17 +188,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
     notes: '',
   });
 
-  const [pieceInput, setPieceInput] = useState({ designation: '', quantite: 1, reference: '' });
-
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
-
-  const addPiece = () => {
-    if (!pieceInput.designation) return;
-    set('pieces', [...(form.pieces || []), { ...pieceInput, id: generateId() }]);
-    setPieceInput({ designation: '', quantite: 1, reference: '' });
-  };
-
-  const removePiece = (id) => set('pieces', form.pieces.filter(p => p.id !== id));
 
   const save = () => {
     try {
@@ -359,32 +350,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           </Field>
         </Section>
 
-        {/* Pièces */}
-        <Section title="🔧 Pièces utilisées">
-          {(form.pieces || []).map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{p.designation}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>Qté: {p.quantite}{p.reference ? ` — Réf: ${p.reference}` : ''}</div>
-              </div>
-              <button onClick={() => removePiece(p.id)} style={{ background: '#ffebee', border: 'none', color: '#c62828', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>Suppr.</button>
-            </div>
-          ))}
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <input value={pieceInput.designation} onChange={e => setPieceInput(p => ({ ...p, designation: e.target.value }))}
-              style={inputStyle} placeholder="Désignation de la pièce" />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={pieceInput.reference} onChange={e => setPieceInput(p => ({ ...p, reference: e.target.value }))}
-                style={{ ...inputStyle, flex: 2 }} placeholder="Référence (optionnel)" />
-              <input value={pieceInput.quantite} onChange={e => setPieceInput(p => ({ ...p, quantite: e.target.value }))}
-                style={{ ...inputStyle, flex: 1 }} placeholder="Qté" type="number" min="1" />
-            </div>
-            <button onClick={addPiece} style={{
-              background: '#e65100', color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14
-            }}>+ Ajouter la pièce</button>
-          </div>
-        </Section>
 
         {/* Heures */}
         <Section title="⏱ Temps d'intervention">
@@ -418,14 +383,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           />
         </Section>
 
-        {/* Notes */}
-        <Section title="📝 Notes internes">
-          <Field label="Observations (non affichées sur PDF)">
-            <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-              style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }}
-              placeholder="Notes privées, rappels..." />
-          </Field>
-        </Section>
 
         {/* Signature */}
         <Section title="✍ Validation client">
