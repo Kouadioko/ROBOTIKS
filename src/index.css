@@ -9,6 +9,14 @@ body {
   background: #f0f2f5;
   color: #1a1a2e;
   min-height: 100vh;
+  color-scheme: light;
+}
+
+/* Forcer le thème clair sur tous les champs de saisie */
+input, textarea, select, canvas {
+  color-scheme: light;
+  color: #1a1a2e;
+  background-color: #fafafa;
 }
 
 :root {

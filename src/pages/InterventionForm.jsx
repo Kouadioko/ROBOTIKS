@@ -150,7 +150,7 @@ function SignatureField({ value, onChange }) {
         ref={canvasRef}
         width={340}
         height={120}
-        style={{ border: '2px solid #e0e0e0', borderRadius: 10, background: '#fafafa', touchAction: 'none', width: '100%', height: 120 }}
+        style={{ border: '2px solid #e0e0e0', borderRadius: 10, background: '#ffffff', touchAction: 'none', width: '100%', height: 120, colorScheme: 'light' }}
         onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop}
         onTouchStart={start} onTouchMove={draw} onTouchEnd={stop}
       />
