@@ -200,47 +200,50 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
   const removePiece = (id) => set('pieces', form.pieces.filter(p => p.id !== id));
 
   const save = () => {
-    const list = loadInterventions();
-    if (existing) {
-      const idx = list.findIndex(i => i.id === existing.id);
-      list[idx] = { ...form, id: existing.id, numero: existing.numero, updatedAt: new Date().toISOString() };
-    } else {
-      const newItem = {
-        ...form,
-        id: generateId(),
-        numero: generateNumero(list),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      list.unshift(newItem);
-    }
-    saveInterventions(list);
-
-    // Auto-enregistrement du client dans la base
-    if (form.clientNom?.trim()) {
-      const clientList = loadClients();
-      const exists = clientList.some(c => c.nom?.toLowerCase() === form.clientNom.trim().toLowerCase());
-      if (!exists) {
-        saveClients([...clientList, {
-          id: generateId(),
-          nom: form.clientNom.trim(),
-          contact: form.clientContact || '',
-          email: form.clientEmail || '',
-          telephone: form.clientTelephone || '',
-          adresse: form.lieu || '',
-          createdAt: new Date().toISOString(),
-        }]);
+    try {
+      const list = loadInterventions();
+      if (existing) {
+        const idx = list.findIndex(i => i.id === existing.id);
+        list[idx] = { ...form, id: existing.id, numero: existing.numero, updatedAt: new Date().toISOString() };
       } else {
-        // Mettre à jour les infos du client existant si elles ont changé
-        saveClients(clientList.map(c =>
-          c.nom?.toLowerCase() === form.clientNom.trim().toLowerCase()
-            ? { ...c, contact: form.clientContact || c.contact, email: form.clientEmail || c.email, telephone: form.clientTelephone || c.telephone }
-            : c
-        ));
+        list.unshift({
+          ...form,
+          id: generateId(),
+          numero: generateNumero(list),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
       }
-    }
+      saveInterventions(list);
 
-    onSaved();
+      // Auto-enregistrement du client dans la base
+      if (form.clientNom?.trim()) {
+        const clientList = loadClients();
+        const nomLower = form.clientNom.trim().toLowerCase();
+        const exists = clientList.some(c => c.nom?.toLowerCase() === nomLower);
+        if (!exists) {
+          saveClients([...clientList, {
+            id: generateId(),
+            nom: form.clientNom.trim(),
+            contact: form.clientContact || '',
+            email: form.clientEmail || '',
+            adresse: form.lieu || '',
+            createdAt: new Date().toISOString(),
+          }]);
+        } else {
+          saveClients(clientList.map(c =>
+            c.nom?.toLowerCase() === nomLower
+              ? { ...c, contact: form.clientContact || c.contact, email: form.clientEmail || c.email }
+              : c
+          ));
+        }
+      }
+
+      onSaved();
+    } catch (e) {
+      console.error('Erreur save:', e);
+      alert(`Erreur lors de la sauvegarde : ${e.message}`);
+    }
   };
 
   const clientSuggestions = clients.filter(c =>
