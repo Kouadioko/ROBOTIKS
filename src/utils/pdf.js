@@ -162,9 +162,8 @@ export async function generatePDF(intervention, settings = {}) {
   }
 
   // ─── PANNE & TRAVAUX ─────────────────────────────────
-  sectionTitle('PANNE & DIAGNOSTIC');
+  sectionTitle('PANNE & TRAVAUX');
   multiField('Panne signalée', intervention.panneSignalee);
-  multiField('Diagnostic', intervention.diagnostic);
   multiField('Travaux effectués', intervention.travauxEffectues);
   y += 3;
 
@@ -209,6 +208,18 @@ export async function generatePDF(intervention, settings = {}) {
   if (intervention.signature || intervention.nomSignataire) {
     checkSpace(55);
     sectionTitle('VALIDATION CLIENT');
+    if (intervention.nomIntervenant) {
+      doc.setTextColor(...GRAY);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Intervenant :', margin, y);
+      doc.setTextColor(...DARK);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(intervention.nomIntervenant, margin + 30, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    }
     if (intervention.nomSignataire) {
       doc.setTextColor(...GRAY);
       doc.setFontSize(8);

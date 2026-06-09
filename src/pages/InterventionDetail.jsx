@@ -102,7 +102,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         {/* Panne & Travaux */}
         <Card title="🛠 Panne & Travaux">
           <Row label="Panne signalée" value={intervention.panneSignalee} />
-          <Row label="Diagnostic" value={intervention.diagnostic} />
           <Row label="Travaux effectués" value={intervention.travauxEffectues} />
         </Card>
 
@@ -130,8 +129,13 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         )}
 
         {/* Signature */}
-        {(intervention.signature || intervention.nomSignataire) && (
+        {(intervention.signature || intervention.nomSignataire || intervention.nomIntervenant) && (
           <Card title="✍ Signature client">
+            {intervention.nomIntervenant && (
+              <div style={{ fontSize: 13, color: '#555', marginBottom: 6 }}>
+                🔧 Intervenant : <strong>{intervention.nomIntervenant}</strong>
+              </div>
+            )}
             {intervention.nomSignataire && (
               <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
                 ✒️ Signé par : <strong>{intervention.nomSignataire}</strong>

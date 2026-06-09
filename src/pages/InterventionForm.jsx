@@ -183,6 +183,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
     status: 'en_cours',
     photosAvant: [],
     photosApres: [],
+    nomIntervenant: '',
     nomSignataire: '',
     signature: '',
     notes: '',
@@ -338,11 +339,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
               style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
               placeholder="Décrire la panne telle que signalée..." />
           </Field>
-          <Field label="Diagnostic technicien">
-            <textarea value={form.diagnostic} onChange={e => set('diagnostic', e.target.value)}
-              style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-              placeholder="Cause identifiée..." />
-          </Field>
           <Field label="Travaux effectués">
             <textarea value={form.travauxEffectues} onChange={e => set('travauxEffectues', e.target.value)}
               style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }}
@@ -386,6 +382,14 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
 
         {/* Signature */}
         <Section title="✍ Validation client">
+          <Field label="Nom de l'intervenant">
+            <input
+              value={form.nomIntervenant}
+              onChange={e => set('nomIntervenant', e.target.value)}
+              style={inputStyle}
+              placeholder="Prénom et nom du technicien"
+            />
+          </Field>
           <Field label="Nom du signataire">
             <input
               value={form.nomSignataire}
