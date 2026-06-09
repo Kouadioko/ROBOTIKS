@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
-import { loadInterventions, saveInterventions, loadClients, generateId, generateNumero } from '../store';
+import { loadInterventions, saveInterventions, loadClients, saveClients, generateId, generateNumero } from '../store';
 
 const STATUTS = [
   { value: 'en_cours', label: 'En cours' },
@@ -214,6 +214,31 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
       list.unshift(newItem);
     }
     saveInterventions(list);
+
+    // Auto-enregistrement du client dans la base
+    if (form.clientNom?.trim()) {
+      const clientList = loadClients();
+      const exists = clientList.some(c => c.nom?.toLowerCase() === form.clientNom.trim().toLowerCase());
+      if (!exists) {
+        saveClients([...clientList, {
+          id: generateId(),
+          nom: form.clientNom.trim(),
+          contact: form.clientContact || '',
+          email: form.clientEmail || '',
+          telephone: form.clientTelephone || '',
+          adresse: form.lieu || '',
+          createdAt: new Date().toISOString(),
+        }]);
+      } else {
+        // Mettre à jour les infos du client existant si elles ont changé
+        saveClients(clientList.map(c =>
+          c.nom?.toLowerCase() === form.clientNom.trim().toLowerCase()
+            ? { ...c, contact: form.clientContact || c.contact, email: form.clientEmail || c.email, telephone: form.clientTelephone || c.telephone }
+            : c
+        ));
+      }
+    }
+
     onSaved();
   };
 
@@ -251,14 +276,24 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           <Field label="Nom de l'entreprise *">
             <input value={form.clientNom} onChange={e => set('clientNom', e.target.value)} style={inputStyle} placeholder="Ex: SARL Dupont BTP" />
             {clientSuggestions.length > 0 && (
-              <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, marginTop: 4 }}>
+              <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
                 {clientSuggestions.map(c => (
                   <div key={c.id} onClick={() => {
-                    set('clientNom', c.nom);
-                    set('clientContact', c.contact || '');
-                    set('clientEmail', c.email || '');
-                  }} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}>
-                    {c.nom}
+                    setForm(f => ({
+                      ...f,
+                      clientNom: c.nom,
+                      clientContact: c.contact || f.clientContact,
+                      clientEmail: c.email || f.clientEmail,
+                      clientTelephone: c.telephone || f.clientTelephone,
+                      lieu: c.adresse || f.lieu,
+                    }));
+                  }} style={{ padding: '10px 12px', cursor: 'pointer', fontSize: 14, borderBottom: '1px solid #f5f5f5' }}>
+                    <div style={{ fontWeight: 600 }}>{c.nom}</div>
+                    {(c.contact || c.telephone) && (
+                      <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                        {[c.contact, c.telephone].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
