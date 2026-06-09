@@ -13,7 +13,7 @@ function Field({ label, children }) {
   );
 }
 
-export default function Settings({ onBack }) {
+export default function Settings({ onBack, onLogout }) {
   const [settings, setSettings] = useState(() => ({
     societe: 'ROBOTIKS',
     siret: '',
@@ -110,6 +110,16 @@ export default function Settings({ onBack }) {
         }}>
           {saved ? '✓ Enregistré !' : 'Enregistrer'}
         </button>
+
+        {onLogout && (
+          <button onClick={onLogout} style={{
+            width: '100%', marginTop: 12, padding: 14,
+            background: '#ffebee', color: '#c62828',
+            border: 'none', borderRadius: 14, fontSize: 15, fontWeight: 700
+          }}>
+            Se déconnecter
+          </button>
+        )}
 
         <div style={{ marginTop: 24, textAlign: 'center', color: '#aaa', fontSize: 12 }}>
           ROBOTIKS — Gestion des interventions v1.0
