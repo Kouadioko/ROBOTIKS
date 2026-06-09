@@ -239,16 +239,29 @@ export async function generatePDF(intervention, settings = {}) {
   }
 
   // ─── SIGNATURE ───────────────────────────────────────
-  if (intervention.signature) {
-    checkSpace(50);
+  if (intervention.signature || intervention.nomSignataire) {
+    checkSpace(55);
     sectionTitle('VALIDATION CLIENT');
-    doc.setTextColor(...GRAY);
-    doc.setFontSize(8);
-    doc.text('Signature du client :', margin, y);
-    try {
-      doc.addImage(intervention.signature, 'PNG', margin, y + 3, 70, 25);
-    } catch (e) { /* skip */ }
-    y += 35;
+    if (intervention.nomSignataire) {
+      doc.setTextColor(...GRAY);
+      doc.setFontSize(8);
+      doc.text('Signé par :', margin, y);
+      doc.setTextColor(...DARK);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(intervention.nomSignataire, margin + 25, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    }
+    if (intervention.signature) {
+      doc.setTextColor(...GRAY);
+      doc.setFontSize(8);
+      doc.text('Signature :', margin, y);
+      try {
+        doc.addImage(intervention.signature, 'PNG', margin, y + 3, 70, 25);
+      } catch (e) { /* skip */ }
+      y += 35;
+    }
   }
 
   // ─── PIED DE PAGE ────────────────────────────────────

@@ -182,6 +182,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
     status: 'en_cours',
     photosAvant: [],
     photosApres: [],
+    nomSignataire: '',
     signature: '',
     notes: '',
   });
@@ -428,6 +429,14 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
 
         {/* Signature */}
         <Section title="✍ Validation client">
+          <Field label="Nom du signataire">
+            <input
+              value={form.nomSignataire}
+              onChange={e => set('nomSignataire', e.target.value)}
+              style={inputStyle}
+              placeholder="Prénom et nom de la personne qui signe"
+            />
+          </Field>
           <SignatureField value={form.signature} onChange={v => set('signature', v)} />
         </Section>
 

@@ -145,9 +145,16 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         )}
 
         {/* Signature */}
-        {intervention.signature && (
+        {(intervention.signature || intervention.nomSignataire) && (
           <Card title="✍ Signature client">
-            <img src={intervention.signature} alt="Signature" style={{ maxWidth: '100%', border: '1px solid #e0e0e0', borderRadius: 8 }} />
+            {intervention.nomSignataire && (
+              <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                ✒️ Signé par : <strong>{intervention.nomSignataire}</strong>
+              </div>
+            )}
+            {intervention.signature && (
+              <img src={intervention.signature} alt="Signature" style={{ maxWidth: '100%', border: '1px solid #e0e0e0', borderRadius: 8 }} />
+            )}
           </Card>
         )}
 
