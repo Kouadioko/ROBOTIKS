@@ -174,7 +174,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           fontSize: 15,
           fontWeight: 700
         }}>
-          {sharing ? '⏳ Génération...' : '📄 Générer PDF'}
+          {sharing ? '⏳ Génération...' : navigator.canShare ? '📤 Envoyer PDF' : '📄 Télécharger PDF'}
         </button>
         <button onClick={deleteIntervention} style={{
           flex: 1,

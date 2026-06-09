@@ -266,5 +266,20 @@ export async function generatePDF(intervention, settings = {}) {
   }
 
   const filename = `${intervention.numero}_${(intervention.clientNom || 'client').replace(/\s+/g, '_')}.pdf`;
+
+  // Sur mobile : ouvre le menu de partage natif (WhatsApp, Gmail, SMS…)
+  // Sur PC : télécharge le fichier
+  if (navigator.canShare) {
+    const blob = doc.output('blob');
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: `Fiche intervention ${intervention.numero}`,
+        text: `Intervention du ${formatDate(intervention.dateIntervention)} — ${intervention.clientNom || ''}`,
+        files: [file],
+      });
+      return;
+    }
+  }
   doc.save(filename);
 }
