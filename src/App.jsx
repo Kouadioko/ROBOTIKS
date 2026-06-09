@@ -12,6 +12,7 @@ import { applyRemoteData } from './store';
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -50,11 +51,19 @@ function LoginScreen({ onLogin }) {
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#e65100', marginBottom: 4, textTransform: 'uppercase' }}>Mot de passe</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required autoComplete="current-password"
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 15 }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                required autoComplete="current-password"
+                style={{ width: '100%', padding: '12px 44px 12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 15 }}
+              />
+              <button type="button" onClick={() => setShowPassword(s => !s)} style={{
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888'
+              }}>
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
           {error && <div style={{ color: '#c62828', fontSize: 13, marginBottom: 14, textAlign: 'center' }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
