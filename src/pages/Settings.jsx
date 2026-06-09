@@ -2,6 +2,17 @@ import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
 import { loadSettings, saveSettings } from '../store';
 
+const inputStyle = { width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e0e0e0', fontSize: 14, background: '#fafafa' };
+
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#e65100', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export default function Settings({ onBack }) {
   const [settings, setSettings] = useState(() => ({
     societe: 'ROBOTIKS',
@@ -30,15 +41,6 @@ export default function Settings({ onBack }) {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-
-  const inputStyle = { width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e0e0e0', fontSize: 14, background: '#fafafa' };
-
-  const Field = ({ label, children }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#e65100', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
-      {children}
-    </div>
-  );
 
   return (
     <div>
