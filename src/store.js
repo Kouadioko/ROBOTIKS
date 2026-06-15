@@ -40,9 +40,37 @@ export function saveSettings(s) {
 
 // ─── Appliquer les données reçues de Firebase ────────
 
+// Fusionne deux listes par id : pour chaque id, garde la version la plus
+// récente (updatedAt/createdAt), et conserve les entrées présentes d'un
+// seul côté (jamais de perte si la synchro cloud est en retard).
+function mergeById(remoteList, localList) {
+  const byId = new Map();
+  for (const item of localList || []) {
+    if (item?.id) byId.set(item.id, item);
+  }
+  for (const item of remoteList || []) {
+    if (!item?.id) continue;
+    const local = byId.get(item.id);
+    if (!local) {
+      byId.set(item.id, item);
+    } else {
+      const remoteTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+      const localTime = new Date(local.updatedAt || local.createdAt || 0).getTime();
+      if (remoteTime >= localTime) byId.set(item.id, item);
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
 export function applyRemoteData(data) {
-  if (data.interventions) localStorage.setItem(INTERVENTIONS_KEY, JSON.stringify(data.interventions));
-  if (data.clients) localStorage.setItem(CLIENTS_KEY, JSON.stringify(data.clients));
+  if (data.interventions) {
+    const merged = mergeById(data.interventions, loadInterventions());
+    localStorage.setItem(INTERVENTIONS_KEY, JSON.stringify(merged));
+  }
+  if (data.clients) {
+    const merged = mergeById(data.clients, loadClients());
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(merged));
+  }
   if (data.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(data.settings));
 }
 
