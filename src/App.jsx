@@ -5,7 +5,7 @@ import InterventionDetail from './pages/InterventionDetail';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
 import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings } from './firebase';
-import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, syncPendingPhotos } from './store';
+import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, syncPending } from './store';
 
 // ─── Écran de connexion ───────────────────────────────
 
@@ -86,7 +86,7 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [syncStatus, setSyncStatus] = useState(''); // '' | 'sync' | 'ok' | 'err'
-  const hasSyncedPhotos = useRef(false);
+  const hasSyncedOnce = useRef(false);
 
   // Surveiller l'état de connexion Firebase
   useEffect(() => {
@@ -114,21 +114,22 @@ export default function App() {
     return () => { unsubInter(); unsubClients(); unsubSettings(); };
   }, [authUser]);
 
-  // Une fois les données synchronisées : migrer les anciennes photos vers
-  // Firebase Storage et réessayer celles restées en attente (hors-ligne).
+  // Une fois les données synchronisées : réessayer l'envoi des fiches et
+  // photos restées en attente (créées/modifiées hors-ligne), et migrer les
+  // anciennes photos vers Firebase Storage.
   useEffect(() => {
-    if (syncStatus === 'ok' && !hasSyncedPhotos.current) {
-      hasSyncedPhotos.current = true;
-      syncPendingPhotos()
+    if (syncStatus === 'ok' && !hasSyncedOnce.current) {
+      hasSyncedOnce.current = true;
+      syncPending()
         .then(changed => { if (changed) window.dispatchEvent(new Event('robotiks-sync')); })
         .catch(() => {});
     }
   }, [syncStatus]);
 
-  // Réessayer l'envoi des photos en attente quand la connexion revient
+  // Réessayer l'envoi des fiches et photos en attente quand la connexion revient
   useEffect(() => {
     const onOnline = () => {
-      syncPendingPhotos()
+      syncPending()
         .then(changed => { if (changed) window.dispatchEvent(new Event('robotiks-sync')); })
         .catch(() => {});
     };
