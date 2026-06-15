@@ -4,8 +4,8 @@ import InterventionForm from './pages/InterventionForm';
 import InterventionDetail from './pages/InterventionDetail';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
-import { onAuthChange, loginWithEmail, logout, fbListen } from './firebase';
-import { applyRemoteData, compressStoredPhotos } from './store';
+import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings } from './firebase';
+import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, syncPendingPhotos } from './store';
 
 // ─── Écran de connexion ───────────────────────────────
 
@@ -86,7 +86,7 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [syncStatus, setSyncStatus] = useState(''); // '' | 'sync' | 'ok' | 'err'
-  const hasCompressedPhotos = useRef(false);
+  const hasSyncedPhotos = useRef(false);
 
   // Surveiller l'état de connexion Firebase
   useEffect(() => {
@@ -97,25 +97,44 @@ export default function App() {
   useEffect(() => {
     if (!authUser) return;
     setSyncStatus('sync');
-    const unsub = fbListen((data) => {
-      applyRemoteData(data);
+    const sync = () => window.dispatchEvent(new Event('robotiks-sync'));
+    const unsubInter = fbListenInterventions((list) => {
+      applyRemoteInterventions(list);
       setSyncStatus('ok');
-      // Forcer le re-rendu des pages qui lisent localStorage
-      window.dispatchEvent(new Event('robotiks-sync'));
+      sync();
     });
-    return unsub;
+    const unsubClients = fbListenClients((list) => {
+      applyRemoteClients(list);
+      sync();
+    });
+    const unsubSettings = fbListenSettings((settings) => {
+      applyRemoteSettings(settings);
+      sync();
+    });
+    return () => { unsubInter(); unsubClients(); unsubSettings(); };
   }, [authUser]);
 
-  // Une fois les données synchronisées, compresser les anciennes photos
-  // trop volumineuses pour libérer de la place dans le stockage local.
+  // Une fois les données synchronisées : migrer les anciennes photos vers
+  // Firebase Storage et réessayer celles restées en attente (hors-ligne).
   useEffect(() => {
-    if (syncStatus === 'ok' && !hasCompressedPhotos.current) {
-      hasCompressedPhotos.current = true;
-      compressStoredPhotos()
+    if (syncStatus === 'ok' && !hasSyncedPhotos.current) {
+      hasSyncedPhotos.current = true;
+      syncPendingPhotos()
         .then(changed => { if (changed) window.dispatchEvent(new Event('robotiks-sync')); })
         .catch(() => {});
     }
   }, [syncStatus]);
+
+  // Réessayer l'envoi des photos en attente quand la connexion revient
+  useEffect(() => {
+    const onOnline = () => {
+      syncPendingPhotos()
+        .then(changed => { if (changed) window.dispatchEvent(new Event('robotiks-sync')); })
+        .catch(() => {});
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
 
   // Chargement initial
   if (authUser === undefined) {

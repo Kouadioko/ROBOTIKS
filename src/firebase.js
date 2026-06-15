@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -13,19 +14,82 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const auth = getAuth(app);
 
-const DOC_REF = () => doc(db, 'robotiks', 'data');
+// ─── Interventions (une collection, un document par fiche) ──
 
-export async function fbSave(data) {
-  await setDoc(DOC_REF(), data, { merge: true });
+export function fbListenInterventions(callback) {
+  const q = query(collection(db, 'interventions'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, () => {});
 }
 
-export function fbListen(callback) {
-  return onSnapshot(DOC_REF(), (snap) => {
+export async function fbSaveIntervention(intervention) {
+  const { id, ...data } = intervention;
+  await setDoc(doc(db, 'interventions', id), data);
+}
+
+export async function fbDeleteIntervention(id) {
+  await deleteDoc(doc(db, 'interventions', id));
+}
+
+// ─── Clients ──────────────────────────────────────────
+
+export function fbListenClients(callback) {
+  return onSnapshot(collection(db, 'clients'), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, () => {});
+}
+
+export async function fbSaveClient(client) {
+  const { id, ...data } = client;
+  await setDoc(doc(db, 'clients', id), data);
+}
+
+export async function fbDeleteClient(id) {
+  await deleteDoc(doc(db, 'clients', id));
+}
+
+// ─── Paramètres de la société (document unique) ──────
+
+export function fbListenSettings(callback) {
+  return onSnapshot(doc(db, 'settings', 'main'), (snap) => {
     if (snap.exists()) callback(snap.data());
+  }, () => {});
+}
+
+export async function fbSaveSettings(settings) {
+  await setDoc(doc(db, 'settings', 'main'), settings, { merge: true });
+}
+
+// ─── Stockage des photos (Firebase Storage) ──────────
+
+export async function uploadPhoto(interventionId, dataUrl, filename) {
+  const path = `interventions/${interventionId}/${filename}.jpg`;
+  const r = ref(storage, path);
+  await uploadString(r, dataUrl, 'data_url');
+  const url = await getDownloadURL(r);
+  return { url, path };
+}
+
+export async function deletePhoto(path) {
+  try { await deleteObject(ref(storage, path)); } catch { /* déjà supprimée */ }
+}
+
+export async function urlToDataUrl(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
 }
+
+// ─── Authentification ────────────────────────────────
 
 export async function loginWithEmail(email, password) {
   return signInWithEmailAndPassword(auth, email, password);

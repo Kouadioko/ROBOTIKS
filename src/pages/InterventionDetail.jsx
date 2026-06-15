@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
-import { loadInterventions, saveInterventions, loadSettings } from '../store';
+import { loadInterventions, deleteIntervention, loadSettings, photoToDataUrl } from '../store';
+import { photoSrc } from '../utils/image';
 import { generatePDF } from '../utils/pdf';
 
 export default function InterventionDetail({ interventionId, onBack, onEdit, onDeleted }) {
@@ -11,9 +12,9 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
 
   if (!intervention) return <div style={{ padding: 20 }}>Intervention introuvable</div>;
 
-  const deleteIntervention = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Supprimer cette intervention ?')) return;
-    saveInterventions(interventions.filter(i => i.id !== interventionId));
+    await deleteIntervention(interventionId);
     onDeleted();
   };
 
@@ -21,7 +22,9 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
     setSharing(true);
     try {
       const settings = loadSettings();
-      await generatePDF(intervention, settings);
+      const photosAvant = (await Promise.all((intervention.photosAvant || []).map(photoToDataUrl))).filter(Boolean);
+      const photosApres = (await Promise.all((intervention.photosApres || []).map(photoToDataUrl))).filter(Boolean);
+      await generatePDF({ ...intervention, photosAvant, photosApres }, settings);
     } catch (e) {
       if (e.name !== 'AbortError') {
         alert(`Erreur PDF : ${e.message || 'inconnue'}`);
@@ -93,7 +96,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           <Card title="📷 Photos avant">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {intervention.photosAvant.map((p, i) => (
-                <img key={i} src={p} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
+                <img key={i} src={photoSrc(p)} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
               ))}
             </div>
           </Card>
@@ -122,7 +125,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           <Card title="📷 Photos après">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {intervention.photosApres.map((p, i) => (
-                <img key={i} src={p} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
+                <img key={i} src={photoSrc(p)} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
               ))}
             </div>
           </Card>
@@ -170,7 +173,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         }}>
           {sharing ? '⏳ Génération...' : navigator.canShare ? '📤 Envoyer PDF' : '📄 Télécharger PDF'}
         </button>
-        <button onClick={deleteIntervention} style={{
+        <button onClick={handleDelete} style={{
           flex: 1,
           padding: '14px',
           background: '#ffebee',

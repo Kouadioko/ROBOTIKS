@@ -1,19 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
-import { loadInterventions, saveInterventions, loadClients, saveClients, generateId, generateNumero } from '../store';
-import { compressFile, compressDataUrl, estimateDataUrlBytes } from '../utils/image';
-// generateId still used for client auto-save
-
-const MAX_PHOTO_BYTES = 350 * 1024; // ~350 Ko : au-delà, on recompresse avant sauvegarde
-
-async function compressIfNeeded(dataUrl) {
-  if (estimateDataUrlBytes(dataUrl) <= MAX_PHOTO_BYTES) return dataUrl;
-  try {
-    return await compressDataUrl(dataUrl);
-  } catch {
-    return dataUrl;
-  }
-}
+import { loadInterventions, loadClients, saveIntervention, saveClient, uploadInterventionPhoto, generateId, generateNumero } from '../store';
+import { compressFile, photoSrc } from '../utils/image';
 
 const STATUTS = [
   { value: 'en_cours', label: 'En cours' },
@@ -53,20 +41,24 @@ function Section({ title, children }) {
   );
 }
 
-function PhotoSection({ label, photos, onAdd, onRemove }) {
+function PhotoSection({ label, photos, onAdd, onRemove, interventionId, onUploading }) {
   const inputRef = useRef();
 
   const handleFile = (e) => {
     const files = Array.from(e.target.files);
     files.forEach(async (file) => {
+      onUploading(1);
       try {
         const compressed = await compressFile(file);
-        onAdd(compressed);
+        const photo = await uploadInterventionPhoto(interventionId, compressed);
+        onAdd(photo);
       } catch {
-        // Si la compression échoue, on garde le fichier d'origine
+        // Si la compression échoue, on garde le fichier d'origine en attente d'envoi
         const reader = new FileReader();
-        reader.onload = (ev) => onAdd(ev.target.result);
+        reader.onload = (ev) => onAdd({ dataUrl: ev.target.result, pending: true });
         reader.readAsDataURL(file);
+      } finally {
+        onUploading(-1);
       }
     });
     e.target.value = '';
@@ -80,7 +72,8 @@ function PhotoSection({ label, photos, onAdd, onRemove }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {photos.map((p, idx) => (
           <div key={idx} style={{ position: 'relative', width: 80, height: 80 }}>
-            <img src={p} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
+            <img src={photoSrc(p)} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
+            {p?.pending && <div style={{ position: 'absolute', bottom: 2, left: 2, right: 2, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 9, textAlign: 'center', borderRadius: 4, padding: '1px 0' }}>en attente</div>}
             <button onClick={() => onRemove(idx)} style={{
               position: 'absolute', top: -6, right: -6,
               background: '#c62828', color: '#fff',
@@ -183,6 +176,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
   const existing = interventionId ? interventions.find(i => i.id === interventionId) : null;
 
   const [form, setForm] = useState(existing || {
+    id: generateId(),
     clientNom: '',
     clientContact: '',
     clientEmail: '',
@@ -208,52 +202,45 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
   });
 
   const [saving, setSaving] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState(0);
+  const setUploadingDelta = (delta) => setPendingUploads(n => n + delta);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   const save = async () => {
     setSaving(true);
     try {
-      // Sécurité : recompresser toute photo encore trop lourde avant sauvegarde
-      const photosAvant = await Promise.all((form.photosAvant || []).map(compressIfNeeded));
-      const photosApres = await Promise.all((form.photosApres || []).map(compressIfNeeded));
-      const finalForm = { ...form, photosAvant, photosApres };
+      const finalForm = existing
+        ? { ...form, updatedAt: new Date().toISOString() }
+        : {
+            ...form,
+            numero: generateNumero(loadInterventions()),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
 
-      const list = loadInterventions();
-      if (existing) {
-        const idx = list.findIndex(i => i.id === existing.id);
-        list[idx] = { ...finalForm, id: existing.id, numero: existing.numero, updatedAt: new Date().toISOString() };
-      } else {
-        list.unshift({
-          ...finalForm,
-          id: generateId(),
-          numero: generateNumero(list),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      saveInterventions(list);
+      await saveIntervention(finalForm);
 
       // Auto-enregistrement du client dans la base
       if (finalForm.clientNom?.trim()) {
         const clientList = loadClients();
         const nomLower = finalForm.clientNom.trim().toLowerCase();
-        const exists = clientList.some(c => c.nom?.toLowerCase() === nomLower);
-        if (!exists) {
-          saveClients([...clientList, {
+        const existingClient = clientList.find(c => c.nom?.toLowerCase() === nomLower);
+        if (!existingClient) {
+          await saveClient({
             id: generateId(),
             nom: finalForm.clientNom.trim(),
             contact: finalForm.clientContact || '',
             email: finalForm.clientEmail || '',
             adresse: finalForm.lieu || '',
             createdAt: new Date().toISOString(),
-          }]);
-        } else {
-          saveClients(clientList.map(c =>
-            c.nom?.toLowerCase() === nomLower
-              ? { ...c, contact: finalForm.clientContact || c.contact, email: finalForm.clientEmail || c.email }
-              : c
-          ));
+          });
+        } else if (finalForm.clientContact || finalForm.clientEmail) {
+          await saveClient({
+            ...existingClient,
+            contact: finalForm.clientContact || existingClient.contact,
+            email: finalForm.clientEmail || existingClient.email,
+          });
         }
       }
 
@@ -361,6 +348,8 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
             photos={form.photosAvant || []}
             onAdd={p => set('photosAvant', [...(form.photosAvant || []), p])}
             onRemove={idx => set('photosAvant', form.photosAvant.filter((_, i) => i !== idx))}
+            interventionId={form.id}
+            onUploading={setUploadingDelta}
           />
         </Section>
 
@@ -408,6 +397,8 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
             photos={form.photosApres || []}
             onAdd={p => set('photosApres', [...(form.photosApres || []), p])}
             onRemove={idx => set('photosApres', form.photosApres.filter((_, i) => i !== idx))}
+            interventionId={form.id}
+            onUploading={setUploadingDelta}
           />
         </Section>
 
@@ -434,10 +425,10 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
         </Section>
 
         {/* Bouton sauvegarder */}
-        <button onClick={save} disabled={saving} style={{
+        <button onClick={save} disabled={saving || pendingUploads > 0} style={{
           width: '100%',
           padding: '16px',
-          background: saving ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
+          background: (saving || pendingUploads > 0) ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
           color: '#fff',
           border: 'none',
           borderRadius: 14,
@@ -445,7 +436,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           fontWeight: 800,
           boxShadow: '0 4px 16px rgba(230,81,0,0.3)'
         }}>
-          {saving ? '⏳ Enregistrement...' : (existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention')}
+          {pendingUploads > 0 ? '⏳ Envoi des photos...' : saving ? '⏳ Enregistrement...' : (existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention')}
         </button>
       </div>
     </div>

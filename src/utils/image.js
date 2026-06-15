@@ -40,3 +40,12 @@ export function estimateDataUrlBytes(dataUrl) {
   const base64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
   return Math.floor(base64.length * 0.75);
 }
+
+// Source affichable d'une photo, quel que soit son format :
+// - chaîne (ancien format base64)
+// - { url, path } : photo hébergée sur Firebase Storage
+// - { dataUrl, pending } : photo en attente d'envoi (hors-ligne)
+export function photoSrc(photo) {
+  if (typeof photo === 'string') return photo;
+  return photo?.url || photo?.dataUrl || '';
+}

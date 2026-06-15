@@ -1,26 +1,25 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
-import { loadClients, saveClients, generateId } from '../store';
+import { loadClients, saveClient, deleteClient, generateId } from '../store';
 
 export default function Clients({ onBack }) {
   const [clients, setClients] = useState(loadClients());
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ nom: '', contact: '', email: '', telephone: '', adresse: '', siret: '' });
 
-  const save = () => {
+  const save = async () => {
     if (!form.nom) return;
-    const list = [...clients, { ...form, id: generateId(), createdAt: new Date().toISOString() }];
-    saveClients(list);
-    setClients(list);
+    const newClient = { ...form, id: generateId(), createdAt: new Date().toISOString() };
+    await saveClient(newClient);
+    setClients([...clients, newClient]);
     setForm({ nom: '', contact: '', email: '', telephone: '', adresse: '', siret: '' });
     setShowForm(false);
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     if (!window.confirm('Supprimer ce client ?')) return;
-    const list = clients.filter(c => c.id !== id);
-    saveClients(list);
-    setClients(list);
+    await deleteClient(id);
+    setClients(clients.filter(c => c.id !== id));
   };
 
   const inputStyle = { width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e0e0e0', fontSize: 14, background: '#fafafa', marginBottom: 10 };
