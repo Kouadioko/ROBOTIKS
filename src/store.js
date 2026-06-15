@@ -1,4 +1,7 @@
 import { fbSave } from './firebase';
+import { compressDataUrl, estimateDataUrlBytes } from './utils/image';
+
+const MAX_PHOTO_BYTES = 350 * 1024; // ~350 Ko
 
 const INTERVENTIONS_KEY = 'robotiks_interventions';
 const CLIENTS_KEY = 'robotiks_clients';
@@ -41,6 +44,32 @@ export function applyRemoteData(data) {
   if (data.interventions) localStorage.setItem(INTERVENTIONS_KEY, JSON.stringify(data.interventions));
   if (data.clients) localStorage.setItem(CLIENTS_KEY, JSON.stringify(data.clients));
   if (data.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(data.settings));
+}
+
+// ─── Compression rétroactive des photos déjà enregistrées ──
+// Réduit la taille des photos volumineuses stockées dans d'anciennes
+// interventions, pour libérer de la place dans le stockage local.
+export async function compressStoredPhotos() {
+  const list = loadInterventions();
+  let changed = false;
+  for (const inter of list) {
+    for (const field of ['photosAvant', 'photosApres']) {
+      const photos = inter[field];
+      if (!Array.isArray(photos)) continue;
+      for (let i = 0; i < photos.length; i++) {
+        if (estimateDataUrlBytes(photos[i]) > MAX_PHOTO_BYTES) {
+          try {
+            photos[i] = await compressDataUrl(photos[i]);
+            changed = true;
+          } catch {
+            // image illisible : on la laisse telle quelle
+          }
+        }
+      }
+    }
+  }
+  if (changed) saveInterventions(list);
+  return changed;
 }
 
 // ─── Utilitaires ──────────────────────────────────────

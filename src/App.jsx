@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Home from './pages/Home';
 import InterventionForm from './pages/InterventionForm';
 import InterventionDetail from './pages/InterventionDetail';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
 import { onAuthChange, loginWithEmail, logout, fbListen } from './firebase';
-import { applyRemoteData } from './store';
+import { applyRemoteData, compressStoredPhotos } from './store';
 
 // ─── Écran de connexion ───────────────────────────────
 
@@ -86,6 +86,7 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [syncStatus, setSyncStatus] = useState(''); // '' | 'sync' | 'ok' | 'err'
+  const hasCompressedPhotos = useRef(false);
 
   // Surveiller l'état de connexion Firebase
   useEffect(() => {
@@ -104,6 +105,17 @@ export default function App() {
     });
     return unsub;
   }, [authUser]);
+
+  // Une fois les données synchronisées, compresser les anciennes photos
+  // trop volumineuses pour libérer de la place dans le stockage local.
+  useEffect(() => {
+    if (syncStatus === 'ok' && !hasCompressedPhotos.current) {
+      hasCompressedPhotos.current = true;
+      compressStoredPhotos()
+        .then(changed => { if (changed) window.dispatchEvent(new Event('robotiks-sync')); })
+        .catch(() => {});
+    }
+  }, [syncStatus]);
 
   // Chargement initial
   if (authUser === undefined) {

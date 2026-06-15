@@ -1,7 +1,19 @@
 import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
 import { loadInterventions, saveInterventions, loadClients, saveClients, generateId, generateNumero } from '../store';
+import { compressFile, compressDataUrl, estimateDataUrlBytes } from '../utils/image';
 // generateId still used for client auto-save
+
+const MAX_PHOTO_BYTES = 350 * 1024; // ~350 Ko : au-delà, on recompresse avant sauvegarde
+
+async function compressIfNeeded(dataUrl) {
+  if (estimateDataUrlBytes(dataUrl) <= MAX_PHOTO_BYTES) return dataUrl;
+  try {
+    return await compressDataUrl(dataUrl);
+  } catch {
+    return dataUrl;
+  }
+}
 
 const STATUTS = [
   { value: 'en_cours', label: 'En cours' },
@@ -46,10 +58,16 @@ function PhotoSection({ label, photos, onAdd, onRemove }) {
 
   const handleFile = (e) => {
     const files = Array.from(e.target.files);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => onAdd(ev.target.result);
-      reader.readAsDataURL(file);
+    files.forEach(async (file) => {
+      try {
+        const compressed = await compressFile(file);
+        onAdd(compressed);
+      } catch {
+        // Si la compression échoue, on garde le fichier d'origine
+        const reader = new FileReader();
+        reader.onload = (ev) => onAdd(ev.target.result);
+        reader.readAsDataURL(file);
+      }
     });
     e.target.value = '';
   };
@@ -189,17 +207,25 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
     notes: '',
   });
 
+  const [saving, setSaving] = useState(false);
+
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-  const save = () => {
+  const save = async () => {
+    setSaving(true);
     try {
+      // Sécurité : recompresser toute photo encore trop lourde avant sauvegarde
+      const photosAvant = await Promise.all((form.photosAvant || []).map(compressIfNeeded));
+      const photosApres = await Promise.all((form.photosApres || []).map(compressIfNeeded));
+      const finalForm = { ...form, photosAvant, photosApres };
+
       const list = loadInterventions();
       if (existing) {
         const idx = list.findIndex(i => i.id === existing.id);
-        list[idx] = { ...form, id: existing.id, numero: existing.numero, updatedAt: new Date().toISOString() };
+        list[idx] = { ...finalForm, id: existing.id, numero: existing.numero, updatedAt: new Date().toISOString() };
       } else {
         list.unshift({
-          ...form,
+          ...finalForm,
           id: generateId(),
           numero: generateNumero(list),
           createdAt: new Date().toISOString(),
@@ -209,23 +235,23 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
       saveInterventions(list);
 
       // Auto-enregistrement du client dans la base
-      if (form.clientNom?.trim()) {
+      if (finalForm.clientNom?.trim()) {
         const clientList = loadClients();
-        const nomLower = form.clientNom.trim().toLowerCase();
+        const nomLower = finalForm.clientNom.trim().toLowerCase();
         const exists = clientList.some(c => c.nom?.toLowerCase() === nomLower);
         if (!exists) {
           saveClients([...clientList, {
             id: generateId(),
-            nom: form.clientNom.trim(),
-            contact: form.clientContact || '',
-            email: form.clientEmail || '',
-            adresse: form.lieu || '',
+            nom: finalForm.clientNom.trim(),
+            contact: finalForm.clientContact || '',
+            email: finalForm.clientEmail || '',
+            adresse: finalForm.lieu || '',
             createdAt: new Date().toISOString(),
           }]);
         } else {
           saveClients(clientList.map(c =>
             c.nom?.toLowerCase() === nomLower
-              ? { ...c, contact: form.clientContact || c.contact, email: form.clientEmail || c.email }
+              ? { ...c, contact: finalForm.clientContact || c.contact, email: finalForm.clientEmail || c.email }
               : c
           ));
         }
@@ -234,7 +260,13 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
       onSaved();
     } catch (e) {
       console.error('Erreur save:', e);
-      alert(`Erreur lors de la sauvegarde : ${e.message}`);
+      if (e.name === 'QuotaExceededError' || /quota/i.test(e.message || '')) {
+        alert("Stockage plein : impossible d'enregistrer. Réduisez le nombre ou la taille des photos de cette fiche, ou supprimez d'anciennes interventions contenant beaucoup de photos.");
+      } else {
+        alert(`Erreur lors de la sauvegarde : ${e.message}`);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -402,10 +434,10 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
         </Section>
 
         {/* Bouton sauvegarder */}
-        <button onClick={save} style={{
+        <button onClick={save} disabled={saving} style={{
           width: '100%',
           padding: '16px',
-          background: 'linear-gradient(135deg, #e65100, #bf360c)',
+          background: saving ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
           color: '#fff',
           border: 'none',
           borderRadius: 14,
@@ -413,7 +445,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           fontWeight: 800,
           boxShadow: '0 4px 16px rgba(230,81,0,0.3)'
         }}>
-          {existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention'}
+          {saving ? '⏳ Enregistrement...' : (existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention')}
         </button>
       </div>
     </div>
