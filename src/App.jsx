@@ -31,7 +31,7 @@ function LoginScreen({ onLogin }) {
 
   return (
     <div style={{
-      minHeight: '100vh', background: 'linear-gradient(135deg, #e65100, #bf360c)',
+      minHeight: '100vh', background: '#e65100',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
     }}>
       <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: '100%', maxWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
@@ -68,7 +68,7 @@ function LoginScreen({ onLogin }) {
           {error && <div style={{ color: '#c62828', fontSize: 13, marginBottom: 14, textAlign: 'center' }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
             width: '100%', padding: 14,
-            background: loading ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
+            background: loading ? '#ccc' : '#e65100',
             color: '#fff', border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 800
           }}>
             {loading ? 'Connexion...' : 'Se connecter'}
@@ -114,9 +114,8 @@ export default function App() {
     return () => { unsubInter(); unsubClients(); unsubSettings(); };
   }, [authUser]);
 
-  // Une fois les données synchronisées : réessayer l'envoi des fiches et
-  // photos restées en attente (créées/modifiées hors-ligne), et migrer les
-  // anciennes photos vers Firebase Storage.
+  // Une fois les données synchronisées : réessayer l'envoi des fiches
+  // restées en attente (créées/modifiées hors-ligne).
   useEffect(() => {
     if (syncStatus === 'ok' && !hasSyncedOnce.current) {
       hasSyncedOnce.current = true;
@@ -126,7 +125,7 @@ export default function App() {
     }
   }, [syncStatus]);
 
-  // Réessayer l'envoi des fiches et photos en attente quand la connexion revient
+  // Réessayer l'envoi des fiches en attente quand la connexion revient
   useEffect(() => {
     const onOnline = () => {
       syncPending()

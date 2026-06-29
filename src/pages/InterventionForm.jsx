@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Header from '../components/Header';
-import { loadInterventions, loadClients, saveIntervention, saveClient, uploadInterventionPhoto, generateId, generateNumero } from '../store';
-import { compressFile, photoSrc } from '../utils/image';
+import { loadInterventions, loadClients, saveIntervention, saveClient, generateId, generateNumero } from '../store';
 
 const STATUTS = [
   { value: 'en_cours', label: 'En cours' },
@@ -37,69 +36,6 @@ function Section({ title, children }) {
         {title}
       </div>
       {children}
-    </div>
-  );
-}
-
-function PhotoSection({ label, photos, onAdd, onRemove, interventionId, onUploading }) {
-  const inputRef = useRef();
-
-  const handleFile = (e) => {
-    const files = Array.from(e.target.files);
-    files.forEach(async (file) => {
-      onUploading(1);
-      try {
-        const compressed = await compressFile(file);
-        const photo = await uploadInterventionPhoto(interventionId, compressed);
-        onAdd(photo);
-      } catch {
-        // Si la compression échoue, on garde le fichier d'origine en attente d'envoi
-        const reader = new FileReader();
-        reader.onload = (ev) => onAdd({ dataUrl: ev.target.result, pending: true });
-        reader.readAsDataURL(file);
-      } finally {
-        onUploading(-1);
-      }
-    });
-    e.target.value = '';
-  };
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#e65100', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </label>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {photos.map((p, idx) => (
-          <div key={idx} style={{ position: 'relative', width: 80, height: 80 }}>
-            <img src={photoSrc(p)} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
-            {p?.pending && <div style={{ position: 'absolute', bottom: 2, left: 2, right: 2, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 9, textAlign: 'center', borderRadius: 4, padding: '1px 0' }}>en attente</div>}
-            <button onClick={() => onRemove(idx)} style={{
-              position: 'absolute', top: -6, right: -6,
-              background: '#c62828', color: '#fff',
-              border: 'none', borderRadius: '50%',
-              width: 22, height: 22, fontSize: 12,
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>✕</button>
-          </div>
-        ))}
-        <button onClick={() => inputRef.current.click()} style={{
-          width: 80, height: 80,
-          border: '2px dashed #e65100',
-          borderRadius: 8,
-          background: '#fff8f5',
-          color: '#e65100',
-          fontSize: 28,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column'
-        }}>
-          <span>📷</span>
-          <span style={{ fontSize: 10, marginTop: 2 }}>Photo</span>
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFile} style={{ display: 'none' }} />
-      </div>
     </div>
   );
 }
@@ -193,8 +129,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
     heureDebut: '',
     heureFin: '',
     status: 'en_cours',
-    photosAvant: [],
-    photosApres: [],
     nomIntervenant: '',
     nomSignataire: '',
     signature: '',
@@ -202,8 +136,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
   });
 
   const [saving, setSaving] = useState(false);
-  const [pendingUploads, setPendingUploads] = useState(0);
-  const setUploadingDelta = (delta) => setPendingUploads(n => n + delta);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
@@ -247,11 +179,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
       onSaved();
     } catch (e) {
       console.error('Erreur save:', e);
-      if (e.name === 'QuotaExceededError' || /quota/i.test(e.message || '')) {
-        alert("Stockage plein : impossible d'enregistrer. Réduisez le nombre ou la taille des photos de cette fiche, ou supprimez d'anciennes interventions contenant beaucoup de photos.");
-      } else {
-        alert(`Erreur lors de la sauvegarde : ${e.message}`);
-      }
+      alert(`Erreur lors de la sauvegarde : ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -341,18 +269,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           </Field>
         </Section>
 
-        {/* Photos Avant */}
-        <Section title="📷 Photos — État initial">
-          <PhotoSection
-            label="Photos avant intervention"
-            photos={form.photosAvant || []}
-            onAdd={p => set('photosAvant', [...(form.photosAvant || []), p])}
-            onRemove={idx => set('photosAvant', form.photosAvant.filter((_, i) => i !== idx))}
-            interventionId={form.id}
-            onUploading={setUploadingDelta}
-          />
-        </Section>
-
         {/* Panne & Diagnostic */}
         <Section title="🛠 Panne & Diagnostic">
           <Field label="Panne signalée par le client">
@@ -390,19 +306,6 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           })()}
         </Section>
 
-        {/* Photos Après */}
-        <Section title="📷 Photos — Après intervention">
-          <PhotoSection
-            label="Photos après intervention"
-            photos={form.photosApres || []}
-            onAdd={p => set('photosApres', [...(form.photosApres || []), p])}
-            onRemove={idx => set('photosApres', form.photosApres.filter((_, i) => i !== idx))}
-            interventionId={form.id}
-            onUploading={setUploadingDelta}
-          />
-        </Section>
-
-
         {/* Signature */}
         <Section title="✍ Validation client">
           <Field label="Nom de l'intervenant">
@@ -425,10 +328,10 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
         </Section>
 
         {/* Bouton sauvegarder */}
-        <button onClick={save} disabled={saving || pendingUploads > 0} style={{
+        <button onClick={save} disabled={saving} style={{
           width: '100%',
           padding: '16px',
-          background: (saving || pendingUploads > 0) ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
+          background: saving ? '#ccc' : '#e65100',
           color: '#fff',
           border: 'none',
           borderRadius: 14,
@@ -436,7 +339,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
           fontWeight: 800,
           boxShadow: '0 4px 16px rgba(230,81,0,0.3)'
         }}>
-          {pendingUploads > 0 ? '⏳ Envoi des photos...' : saving ? '⏳ Enregistrement...' : (existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention')}
+          {saving ? '⏳ Enregistrement...' : (existing ? '✓ Enregistrer les modifications' : '✓ Créer la fiche d\'intervention')}
         </button>
       </div>
     </div>

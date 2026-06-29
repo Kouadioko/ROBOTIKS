@@ -36,29 +36,42 @@ export async function generatePDF(intervention, settings = {}) {
 
   doc.setTextColor(255, 255, 255);
 
+  // Tronque le texte avec "…" s'il dépasse la largeur dispo (évite que les
+  // infos société chevauchent le bloc n°/date en haut à droite).
+  const fitText = (text, maxWidth) => {
+    if (doc.getTextWidth(text) <= maxWidth) return text;
+    let s = text;
+    while (s.length > 1 && doc.getTextWidth(s + '…') > maxWidth) s = s.slice(0, -1);
+    return s + '…';
+  };
+  const headerRightX = W - margin - 62; // début du bloc n° / date (haut à droite)
+
   // Logo ou nom texte
   if (settings.logo) {
     try {
       doc.addImage(settings.logo, margin, 4, 30, 22, '', 'FAST');
+      const infoX = margin + 34;
+      const infoMaxW = headerRightX - infoX - 3;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       const infos = [settings.telephone, settings.email, settings.adresse].filter(Boolean);
-      if (infos.length) doc.text(infos.join('  |  '), margin + 34, 14);
-      if (settings.siret) doc.text(`SIRET : ${settings.siret}`, margin + 34, 20);
+      if (infos.length) doc.text(fitText(infos.join('  |  '), infoMaxW), infoX, 14);
+      if (settings.siret) doc.text(fitText(`SIRET : ${settings.siret}`, infoMaxW), infoX, 20);
     } catch {
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
-      doc.text(settings.societe || 'ROBOTIKS', margin, 16);
+      doc.text(fitText(settings.societe || 'ROBOTIKS', headerRightX - margin - 3), margin, 16);
     }
   } else {
+    const leftMaxW = headerRightX - margin - 3;
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text(settings.societe || 'ROBOTIKS', margin, 16);
+    doc.text(fitText(settings.societe || 'ROBOTIKS', leftMaxW), margin, 16);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     const infos = [settings.telephone, settings.email, settings.adresse].filter(Boolean);
-    doc.text(infos.join('  |  '), margin, 23);
-    if (settings.siret) doc.text(`SIRET : ${settings.siret}`, margin, 29);
+    doc.text(fitText(infos.join('  |  '), leftMaxW), margin, 23);
+    if (settings.siret) doc.text(fitText(`SIRET : ${settings.siret}`, leftMaxW), margin, 29);
   }
 
   // N° intervention en haut à droite
@@ -146,21 +159,6 @@ export async function generatePDF(intervention, settings = {}) {
   field('N° de série', intervention.numeroSerie);
   y += 3;
 
-  // ─── PHOTOS AVANT ────────────────────────────────────
-  if (intervention.photosAvant?.length > 0) {
-    sectionTitle('PHOTOS — ÉTAT INITIAL');
-    const photoW = 55;
-    const photoH = 40;
-    let px = margin;
-    for (const photo of intervention.photosAvant) {
-      checkSpace(photoH + 5);
-      if (px + photoW > W - margin) { px = margin; y += photoH + 4; }
-      try { doc.addImage(photo, 'JPEG', px, y, photoW, photoH); } catch (e) { /* skip */ }
-      px += photoW + 4;
-    }
-    y += photoH + 8;
-  }
-
   // ─── PANNE & TRAVAUX ─────────────────────────────────
   sectionTitle('PANNE & TRAVAUX');
   multiField('Panne signalée', intervention.panneSignalee);
@@ -187,21 +185,6 @@ export async function generatePDF(intervention, settings = {}) {
 
     cols.forEach(([lbl, val]) => field(lbl, val));
     y += 3;
-  }
-
-  // ─── PHOTOS APRÈS ────────────────────────────────────
-  if (intervention.photosApres?.length > 0) {
-    sectionTitle('PHOTOS — APRÈS INTERVENTION');
-    const photoW = 55;
-    const photoH = 40;
-    let px = margin;
-    for (const photo of intervention.photosApres) {
-      checkSpace(photoH + 5);
-      if (px + photoW > W - margin) { px = margin; y += photoH + 4; }
-      try { doc.addImage(photo, 'JPEG', px, y, photoW, photoH); } catch (e) { /* skip */ }
-      px += photoW + 4;
-    }
-    y += photoH + 8;
   }
 
   // ─── SIGNATURE ───────────────────────────────────────

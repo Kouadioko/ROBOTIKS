@@ -164,7 +164,7 @@ export default function Home({ onNew, onOpen, onClients, onSettings }) {
         width: 60,
         height: 60,
         borderRadius: 30,
-        background: 'linear-gradient(135deg, #e65100, #bf360c)',
+        background: '#e65100',
         color: '#fff',
         border: 'none',
         fontSize: 32,

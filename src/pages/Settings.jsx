@@ -100,7 +100,7 @@ export default function Settings({ onBack, onLogout }) {
         <button onClick={save} style={{
           width: '100%',
           padding: 16,
-          background: saved ? '#2e7d32' : 'linear-gradient(135deg, #e65100, #bf360c)',
+          background: saved ? '#2e7d32' : '#e65100',
           color: '#fff',
           border: 'none',
           borderRadius: 14,

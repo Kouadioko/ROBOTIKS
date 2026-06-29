@@ -21,7 +21,6 @@ input, textarea, select, canvas {
 
 :root {
   --primary: #e65100;
-  --primary-dark: #bf360c;
   --secondary: #1565c0;
   --secondary-dark: #0d47a1;
   --bg: #f0f2f5;

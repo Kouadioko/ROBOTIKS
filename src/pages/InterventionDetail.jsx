@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
-import { loadInterventions, deleteIntervention, loadSettings, photoToDataUrl } from '../store';
-import { photoSrc } from '../utils/image';
+import { loadInterventions, deleteIntervention, loadSettings } from '../store';
 import { generatePDF } from '../utils/pdf';
 
 export default function InterventionDetail({ interventionId, onBack, onEdit, onDeleted }) {
@@ -22,9 +21,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
     setSharing(true);
     try {
       const settings = loadSettings();
-      const photosAvant = (await Promise.all((intervention.photosAvant || []).map(photoToDataUrl))).filter(Boolean);
-      const photosApres = (await Promise.all((intervention.photosApres || []).map(photoToDataUrl))).filter(Boolean);
-      await generatePDF({ ...intervention, photosAvant, photosApres }, settings);
+      await generatePDF(intervention, settings);
     } catch (e) {
       if (e.name !== 'AbortError') {
         alert(`Erreur PDF : ${e.message || 'inconnue'}`);
@@ -91,17 +88,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           <Row label="N° de série" value={intervention.numeroSerie} />
         </Card>
 
-        {/* Photos avant */}
-        {intervention.photosAvant?.length > 0 && (
-          <Card title="📷 Photos avant">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {intervention.photosAvant.map((p, i) => (
-                <img key={i} src={photoSrc(p)} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
-              ))}
-            </div>
-          </Card>
-        )}
-
         {/* Panne & Travaux */}
         <Card title="🛠 Panne & Travaux">
           <Row label="Panne signalée" value={intervention.panneSignalee} />
@@ -116,17 +102,6 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
               {intervention.heureDebut && <Row label="Début" value={intervention.heureDebut} />}
               {intervention.heureFin && <Row label="Fin" value={intervention.heureFin} />}
               {duree && <Row label="Durée" value={duree} />}
-            </div>
-          </Card>
-        )}
-
-        {/* Photos après */}
-        {intervention.photosApres?.length > 0 && (
-          <Card title="📷 Photos après">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {intervention.photosApres.map((p, i) => (
-                <img key={i} src={photoSrc(p)} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #e0e0e0' }} />
-              ))}
             </div>
           </Card>
         )}
@@ -164,7 +139,7 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         <button onClick={handlePDF} disabled={sharing} style={{
           flex: 3,
           padding: '14px',
-          background: sharing ? '#ccc' : 'linear-gradient(135deg, #e65100, #bf360c)',
+          background: sharing ? '#ccc' : '#e65100',
           color: '#fff',
           border: 'none',
           borderRadius: 12,

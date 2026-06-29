@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -14,7 +13,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
 const auth = getAuth(app);
 
 // ─── Interventions (une collection, un document par fiche) ──
@@ -62,31 +60,6 @@ export function fbListenSettings(callback) {
 
 export async function fbSaveSettings(settings) {
   await setDoc(doc(db, 'settings', 'main'), settings, { merge: true });
-}
-
-// ─── Stockage des photos (Firebase Storage) ──────────
-
-export async function uploadPhoto(interventionId, dataUrl, filename) {
-  const path = `interventions/${interventionId}/${filename}.jpg`;
-  const r = ref(storage, path);
-  await uploadString(r, dataUrl, 'data_url');
-  const url = await getDownloadURL(r);
-  return { url, path };
-}
-
-export async function deletePhoto(path) {
-  try { await deleteObject(ref(storage, path)); } catch { /* déjà supprimée */ }
-}
-
-export async function urlToDataUrl(url) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 // ─── Authentification ────────────────────────────────

@@ -2,11 +2,8 @@ import {
   fbSaveIntervention, fbDeleteIntervention,
   fbSaveClient, fbDeleteClient,
   fbSaveSettings,
-  uploadPhoto, deletePhoto, urlToDataUrl,
 } from './firebase';
-import { compressDataUrl, estimateDataUrlBytes } from './utils/image';
 
-const MAX_PHOTO_BYTES = 350 * 1024; // ~350 Ko
 const INTERVENTIONS_KEY = 'robotiks_interventions';
 const CLIENTS_KEY = 'robotiks_clients';
 const SETTINGS_KEY = 'robotiks_settings';
@@ -68,18 +65,9 @@ export async function saveIntervention(intervention) {
 
 export async function deleteIntervention(id) {
   const list = loadInterventions();
-  const target = list.find(i => i.id === id);
   localStorage.setItem(INTERVENTIONS_KEY, JSON.stringify(list.filter(i => i.id !== id)));
   unmarkPending('interventions', id);
   try { await fbDeleteIntervention(id); } catch { /* hors-ligne */ }
-  // Nettoyage des photos associées dans Firebase Storage (best-effort)
-  if (target) {
-    for (const field of ['photosAvant', 'photosApres']) {
-      for (const p of target[field] || []) {
-        if (p?.path) deletePhoto(p.path);
-      }
-    }
-  }
 }
 
 export async function saveClient(client) {
@@ -109,18 +97,6 @@ export async function saveSettings(s) {
     unmarkPending('settings');
   } catch {
     markPending('settings'); // hors-ligne : sera resynchronisé
-  }
-}
-
-// ─── Photos : compression + envoi vers Firebase Storage ─
-
-// dataUrl déjà compressée -> upload Storage. En cas d'échec (hors-ligne),
-// la photo est conservée localement avec le marqueur `pending`.
-export async function uploadInterventionPhoto(interventionId, compressedDataUrl) {
-  try {
-    return await uploadPhoto(interventionId, compressedDataUrl, generateId());
-  } catch {
-    return { dataUrl: compressedDataUrl, pending: true };
   }
 }
 
@@ -162,16 +138,14 @@ export function applyRemoteSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-// ─── Synchronisation différée : fiches et photos en attente ──
-// - Réessaie d'envoyer vers Firestore les fiches (interventions, clients,
-//   paramètres) dont l'enregistrement cloud avait échoué (créées hors-ligne).
-// - Convertit les anciennes photos (base64 en texte) vers Firebase Storage.
-// - Réessaie d'envoyer les photos restées "en attente" (ajoutées hors-ligne).
+// ─── Synchronisation différée : fiches en attente ──────
+// Réessaie d'envoyer vers Firestore les fiches (interventions, clients,
+// paramètres) dont l'enregistrement cloud avait échoué (créées hors-ligne).
 // Idempotent : ne fait rien si tout est déjà synchronisé.
 export async function syncPending() {
   const docsChanged = await syncPendingDocs();
 
-  // Clients et paramètres : migration ponctuelle vers les nouvelles collections
+  // Migration ponctuelle (une fois) des anciennes données vers les nouvelles collections
   if (!localStorage.getItem(MIGRATED_KEY)) {
     for (const c of loadClients()) {
       try { await fbSaveClient(c); } catch { return docsChanged; } // hors-ligne : on réessaiera plus tard
@@ -183,35 +157,7 @@ export async function syncPending() {
     localStorage.setItem(MIGRATED_KEY, 'true');
   }
 
-  const list = loadInterventions();
-  let anyChanged = docsChanged;
-  for (const inter of list) {
-    let changed = false;
-    for (const field of ['photosAvant', 'photosApres']) {
-      const photos = inter[field];
-      if (!Array.isArray(photos)) continue;
-      for (let i = 0; i < photos.length; i++) {
-        const p = photos[i];
-        if (p && typeof p === 'object' && p.url) continue; // déjà sur Storage
-        const rawDataUrl = typeof p === 'string' ? p : p?.dataUrl;
-        if (!rawDataUrl) continue;
-        try {
-          const compressed = estimateDataUrlBytes(rawDataUrl) > MAX_PHOTO_BYTES
-            ? await compressDataUrl(rawDataUrl)
-            : rawDataUrl;
-          photos[i] = await uploadPhoto(inter.id, compressed, generateId());
-          changed = true;
-        } catch {
-          // toujours hors-ligne : on réessaiera à la prochaine occasion
-        }
-      }
-    }
-    if (changed) {
-      anyChanged = true;
-      await saveIntervention(inter);
-    }
-  }
-  return anyChanged;
+  return docsChanged;
 }
 
 // Réessaie d'envoyer vers Firestore les fiches modifiées hors-ligne.
@@ -248,17 +194,6 @@ async function syncPendingDocs() {
   }
 
   return anyChanged;
-}
-
-// ─── PDF : récupérer une photo sous forme de data URL ─
-
-export async function photoToDataUrl(photo) {
-  if (typeof photo === 'string') return photo;
-  if (photo?.dataUrl) return photo.dataUrl;
-  if (photo?.url) {
-    try { return await urlToDataUrl(photo.url); } catch { return null; }
-  }
-  return null;
 }
 
 // ─── Utilitaires ──────────────────────────────────────

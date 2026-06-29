@@ -3,7 +3,7 @@ import React from 'react';
 export default function Header({ title, onBack, action }) {
   return (
     <header style={{
-      background: 'linear-gradient(135deg, #e65100, #bf360c)',
+      background: '#e65100',
       color: '#fff',
       padding: '16px 20px',
       display: 'flex',
