@@ -42,20 +42,6 @@ const SECTIONS_BASE = [
       'Filtre hydraulique',
     ],
   },
-  {
-    id: 'cabine',
-    title: 'Cabine & Commandes',
-    emoji: '🚧',
-    items: [
-      'Siège (état)',
-      'Commandes (fonctionnement)',
-      'Tableau de bord / instruments',
-      'Klaxon / alarmes de recul',
-      'Éclairage (feux de travail)',
-      'Essuie-glaces',
-      'Vitres / porte',
-    ],
-  },
 ];
 
 // Section motorisation THERMIQUE (diesel / essence)
@@ -94,13 +80,11 @@ const MOTOR_ELECTRIQUE = {
 // Retourne la liste complète des sections en insérant la bonne motorisation
 export function getSections(motorType) {
   const motorSection = motorType === 'electrique' ? MOTOR_ELECTRIQUE : MOTOR_THERMIQUE;
-  // Insertion entre hydraulique et cabine
   return [
     SECTIONS_BASE[0], // chassis
     SECTIONS_BASE[1], // bras
     SECTIONS_BASE[2], // hydraulique
     motorSection,
-    SECTIONS_BASE[3], // cabine
   ];
 }
 
@@ -155,7 +139,7 @@ export const STATUS_OPTS = [
 
 export function buildChecklist() {
   const cl = {};
-  // Sections de base (sans moteur)
+  // Sections de base (chassis, bras, hydraulique)
   for (const s of SECTIONS_BASE) {
     cl[s.id] = { items: {}, notes: '' };
     for (const item of s.items) cl[s.id].items[item] = '';
