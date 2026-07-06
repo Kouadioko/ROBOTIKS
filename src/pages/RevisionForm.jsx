@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import { loadRevisions, loadClients, saveRevision, generateId, generateNumeroRevision } from '../store';
-import { SECTIONS, TOOLS, STATUS_OPTS, buildChecklist } from '../utils/revisionConfig';
+import { getSections, TOOLS, STATUS_OPTS, buildChecklist } from '../utils/revisionConfig';
 
 const inputStyle = {
   width: '100%', padding: '10px 12px',
@@ -83,6 +83,7 @@ export default function RevisionForm({ revisionId, onBack, onSaved }) {
     modele: '',
     numeroSerie: '',
     dateRevision: new Date().toISOString().slice(0, 10),
+    motorType: 'thermique',
     activeTools: [],
     checklist: buildChecklist(),
     nomIntervenant: '',
@@ -197,6 +198,30 @@ export default function RevisionForm({ revisionId, onBack, onSaved }) {
             <input value={form.numeroSerie} onChange={e => set('numeroSerie', e.target.value)} style={inputStyle} placeholder="Numéro de série" />
           </div>
 
+          <div style={{ marginBottom: 10 }}>
+            <Label>Type de motorisation</Label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { key: 'thermique', label: '⚙ Thermique', sub: 'diesel / essence' },
+                { key: 'electrique', label: '⚡ Électrique', sub: 'Brokk, etc.' },
+              ].map(opt => {
+                const active = form.motorType === opt.key;
+                return (
+                  <button key={opt.key} type="button" onClick={() => set('motorType', opt.key)} style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                    border: active ? '2px solid #e65100' : '2px solid #e0e0e0',
+                    background: active ? '#fff3e0' : '#fafafa',
+                    color: active ? '#e65100' : '#888',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{opt.label}</div>
+                    <div style={{ fontSize: 11, marginTop: 2 }}>{opt.sub}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <Label>Date de révision</Label>
@@ -224,8 +249,8 @@ export default function RevisionForm({ revisionId, onBack, onSaved }) {
           </div>
         </div>
 
-        {/* Sections fixes */}
-        {SECTIONS.map(section => (
+        {/* Sections (adaptées au type de motorisation) */}
+        {getSections(form.motorType).map(section => (
           <SectionBlock
             key={section.id}
             section={section}

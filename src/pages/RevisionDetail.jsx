@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import { loadRevisions, deleteRevision, loadSettings } from '../store';
 import { generateRevisionPDF } from '../utils/pdfRevision';
-import { SECTIONS, TOOLS, STATUS_OPTS, getRevisionCounts } from '../utils/revisionConfig';
+import { getSections, TOOLS, STATUS_OPTS, getRevisionCounts } from '../utils/revisionConfig';
 
 export default function RevisionDetail({ revisionId, onBack, onEdit, onDeleted }) {
   const [sharing, setSharing] = useState(false);
@@ -28,7 +28,8 @@ export default function RevisionDetail({ revisionId, onBack, onEdit, onDeleted }
   };
 
   const counts = getRevisionCounts(revision);
-  const activeSections = [...SECTIONS, ...TOOLS.filter(t => revision.activeTools?.includes(t.id))];
+  const motorType = revision.motorType || 'thermique';
+  const activeSections = [...getSections(motorType), ...TOOLS.filter(t => revision.activeTools?.includes(t.id))];
 
   const statusFor = (key) => STATUS_OPTS.find(o => o.key === key);
 

@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { SECTIONS, TOOLS, getRevisionCounts } from './revisionConfig';
+import { getSections, TOOLS, getRevisionCounts } from './revisionConfig';
 
 function formatDate(str) {
   if (!str) return '';
@@ -147,8 +147,9 @@ export async function generateRevisionPDF(revision, settings = {}) {
     y += 10;
   };
 
+  const motorType = revision.motorType || 'thermique';
   const activeSections = [
-    ...SECTIONS,
+    ...getSections(motorType),
     ...TOOLS.filter(t => revision.activeTools?.includes(t.id)),
   ];
 

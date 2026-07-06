@@ -1,4 +1,5 @@
-export const SECTIONS = [
+// Sections communes (sans la partie motorisation)
+const SECTIONS_BASE = [
   {
     id: 'chassis',
     title: 'Chassis',
@@ -8,7 +9,7 @@ export const SECTIONS = [
       'Chenilles / patins (usure, tension)',
       'Galets supérieurs',
       'Galets inférieurs',
-      'Moteur de déplacement (fuites)',
+      'Moteur de déplacement (fuites / état)',
       "Couronne d'orientation",
       'Contrepoids',
       'Boulonnerie châssis',
@@ -42,21 +43,6 @@ export const SECTIONS = [
     ],
   },
   {
-    id: 'moteur',
-    title: 'Moteur & Fluides',
-    emoji: '⚙',
-    items: [
-      'Niveau huile moteur',
-      'Niveau liquide refroidissement',
-      'Niveau carburant',
-      'Courroies (usure, tension)',
-      'Filtre à air',
-      'Filtre à gasoil',
-      'Batterie (charge, corrosion)',
-      'Fuites moteur',
-    ],
-  },
-  {
     id: 'cabine',
     title: 'Cabine & Commandes',
     emoji: '🚧',
@@ -71,6 +57,55 @@ export const SECTIONS = [
     ],
   },
 ];
+
+// Section motorisation THERMIQUE (diesel / essence)
+const MOTOR_THERMIQUE = {
+  id: 'moteur',
+  title: 'Moteur & Fluides',
+  emoji: '⚙',
+  items: [
+    'Niveau huile moteur',
+    'Niveau liquide refroidissement',
+    'Niveau carburant',
+    'Courroies (usure, tension)',
+    'Filtre à air',
+    'Filtre à gasoil',
+    'Batterie (charge, corrosion)',
+    'Fuites moteur',
+  ],
+};
+
+// Section motorisation ÉLECTRIQUE (Brokk, etc.)
+const MOTOR_ELECTRIQUE = {
+  id: 'moteur',
+  title: 'Motorisation électrique',
+  emoji: '⚡',
+  items: [
+    'Moteur électrique (état, surchauffe)',
+    'Câbles et connexions électriques',
+    'Alimentation / source d\'énergie',
+    'Boîtier de commande / télécommande',
+    'Fusibles / disjoncteurs',
+    'Refroidissement moteur (ventilation)',
+    'Batterie de commande (charge, état)',
+  ],
+};
+
+// Retourne la liste complète des sections en insérant la bonne motorisation
+export function getSections(motorType) {
+  const motorSection = motorType === 'electrique' ? MOTOR_ELECTRIQUE : MOTOR_THERMIQUE;
+  // Insertion entre hydraulique et cabine
+  return [
+    SECTIONS_BASE[0], // chassis
+    SECTIONS_BASE[1], // bras
+    SECTIONS_BASE[2], // hydraulique
+    motorSection,
+    SECTIONS_BASE[3], // cabine
+  ];
+}
+
+// Pour les boucles et la config
+export const SECTIONS = SECTIONS_BASE; // compatibilité (non utilisé en interne)
 
 export const TOOLS = [
   {
@@ -120,21 +155,36 @@ export const STATUS_OPTS = [
 
 export function buildChecklist() {
   const cl = {};
-  for (const s of [...SECTIONS, ...TOOLS]) {
+  // Sections de base (sans moteur)
+  for (const s of SECTIONS_BASE) {
     cl[s.id] = { items: {}, notes: '' };
     for (const item of s.items) cl[s.id].items[item] = '';
+  }
+  // Section moteur : union des items thermique + électrique sous la même clé
+  cl['moteur'] = { items: {}, notes: '' };
+  for (const item of [...MOTOR_THERMIQUE.items, ...MOTOR_ELECTRIQUE.items]) {
+    cl['moteur'].items[item] = '';
+  }
+  // Outils
+  for (const t of TOOLS) {
+    cl[t.id] = { items: {}, notes: '' };
+    for (const item of t.items) cl[t.id].items[item] = '';
   }
   return cl;
 }
 
 export function getRevisionCounts(revision) {
   const counts = { ok: 0, watch: 0, defaut: 0, na: 0 };
-  const activeSections = [...SECTIONS, ...TOOLS.filter(t => revision.activeTools?.includes(t.id))];
+  const motorType = revision.motorType || 'thermique';
+  const activeSections = [
+    ...getSections(motorType),
+    ...TOOLS.filter(t => revision.activeTools?.includes(t.id)),
+  ];
   for (const s of activeSections) {
     const data = revision.checklist?.[s.id];
     if (!data) continue;
     for (const item of s.items) {
-      const v = data.items[item];
+      const v = data.items?.[item];
       if (v && counts[v] !== undefined) counts[v]++;
     }
   }
