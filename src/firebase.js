@@ -62,6 +62,24 @@ export async function fbSaveSettings(settings) {
   await setDoc(doc(db, 'settings', 'main'), settings, { merge: true });
 }
 
+// ─── Révisions (une collection, un document par fiche) ──
+
+export function fbListenRevisions(callback) {
+  const q = query(collection(db, 'revisions'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, () => {});
+}
+
+export async function fbSaveRevision(revision) {
+  const { id, ...data } = revision;
+  await setDoc(doc(db, 'revisions', id), data);
+}
+
+export async function fbDeleteRevision(id) {
+  await deleteDoc(doc(db, 'revisions', id));
+}
+
 // ─── Authentification ────────────────────────────────
 
 export async function loginWithEmail(email, password) {

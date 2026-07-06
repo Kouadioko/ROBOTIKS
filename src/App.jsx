@@ -4,8 +4,11 @@ import InterventionForm from './pages/InterventionForm';
 import InterventionDetail from './pages/InterventionDetail';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
-import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings } from './firebase';
-import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, syncPending } from './store';
+import Revisions from './pages/Revisions';
+import RevisionForm from './pages/RevisionForm';
+import RevisionDetail from './pages/RevisionDetail';
+import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings, fbListenRevisions } from './firebase';
+import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, applyRemoteRevisions, syncPending } from './store';
 
 // ─── Écran de connexion ───────────────────────────────
 
@@ -85,6 +88,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState(undefined); // undefined = en cours de vérification
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedRevisionId, setSelectedRevisionId] = useState(null);
   const [syncStatus, setSyncStatus] = useState(''); // '' | 'sync' | 'ok' | 'err'
   const hasSyncedOnce = useRef(false);
 
@@ -111,7 +115,11 @@ export default function App() {
       applyRemoteSettings(settings);
       sync();
     });
-    return () => { unsubInter(); unsubClients(); unsubSettings(); };
+    const unsubRevisions = fbListenRevisions((list) => {
+      applyRemoteRevisions(list);
+      sync();
+    });
+    return () => { unsubInter(); unsubClients(); unsubSettings(); unsubRevisions(); };
   }, [authUser]);
 
   // Une fois les données synchronisées : réessayer l'envoi des fiches
@@ -189,6 +197,40 @@ export default function App() {
     </>
   );
 
+  if (screen === 'revisions') return (
+    <>
+      <SyncDot />
+      <Revisions
+        onBack={() => setScreen('home')}
+        onNew={() => { setSelectedRevisionId(null); setScreen('revision-form'); }}
+        onOpen={(id) => { setSelectedRevisionId(id); setScreen('revision-detail'); }}
+      />
+    </>
+  );
+
+  if (screen === 'revision-form') return (
+    <>
+      <SyncDot />
+      <RevisionForm
+        revisionId={selectedRevisionId}
+        onBack={() => setScreen(selectedRevisionId ? 'revision-detail' : 'revisions')}
+        onSaved={() => setScreen(selectedRevisionId ? 'revision-detail' : 'revisions')}
+      />
+    </>
+  );
+
+  if (screen === 'revision-detail') return (
+    <>
+      <SyncDot />
+      <RevisionDetail
+        revisionId={selectedRevisionId}
+        onBack={() => setScreen('revisions')}
+        onEdit={() => setScreen('revision-form')}
+        onDeleted={() => setScreen('revisions')}
+      />
+    </>
+  );
+
   if (screen === 'settings') return (
     <>
       <SyncDot />
@@ -204,6 +246,7 @@ export default function App() {
         onOpen={(id) => { setSelectedId(id); setScreen('detail'); }}
         onClients={() => setScreen('clients')}
         onSettings={() => setScreen('settings')}
+        onRevisions={() => setScreen('revisions')}
       />
     </>
   );

@@ -2,11 +2,13 @@ import {
   fbSaveIntervention, fbDeleteIntervention,
   fbSaveClient, fbDeleteClient,
   fbSaveSettings,
+  fbSaveRevision, fbDeleteRevision,
 } from './firebase';
 
 const INTERVENTIONS_KEY = 'robotiks_interventions';
 const CLIENTS_KEY = 'robotiks_clients';
 const SETTINGS_KEY = 'robotiks_settings';
+const REVISIONS_KEY = 'robotiks_revisions';
 const MIGRATED_KEY = 'robotiks_migrated_v2';
 const PENDING_SYNC_KEY = 'robotiks_pending_sync';
 
@@ -24,13 +26,17 @@ export function loadSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
 }
 
+export function loadRevisions() {
+  try { return JSON.parse(localStorage.getItem(REVISIONS_KEY) || '[]'); } catch { return []; }
+}
+
 // ─── File d'attente : fiches dont l'envoi cloud a échoué ──
 
 function loadPendingSync() {
   try {
-    return { interventions: [], clients: [], settings: false, ...JSON.parse(localStorage.getItem(PENDING_SYNC_KEY) || '{}') };
+    return { interventions: [], clients: [], settings: false, revisions: [], ...JSON.parse(localStorage.getItem(PENDING_SYNC_KEY) || '{}') };
   } catch {
-    return { interventions: [], clients: [], settings: false };
+    return { interventions: [], clients: [], settings: false, revisions: [] };
   }
 }
 
@@ -90,6 +96,26 @@ export async function deleteClient(id) {
   try { await fbDeleteClient(id); } catch { /* hors-ligne */ }
 }
 
+export async function saveRevision(revision) {
+  const list = loadRevisions();
+  const idx = list.findIndex(r => r.id === revision.id);
+  if (idx >= 0) list[idx] = revision; else list.unshift(revision);
+  localStorage.setItem(REVISIONS_KEY, JSON.stringify(list));
+  try {
+    await fbSaveRevision(revision);
+    unmarkPending('revisions', revision.id);
+  } catch {
+    markPending('revisions', revision.id);
+  }
+}
+
+export async function deleteRevision(id) {
+  const list = loadRevisions();
+  localStorage.setItem(REVISIONS_KEY, JSON.stringify(list.filter(r => r.id !== id)));
+  unmarkPending('revisions', id);
+  try { await fbDeleteRevision(id); } catch { /* hors-ligne */ }
+}
+
 export async function saveSettings(s) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   try {
@@ -122,6 +148,11 @@ function mergeById(remoteList, localList) {
     }
   }
   return Array.from(byId.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+export function applyRemoteRevisions(remoteList) {
+  const merged = mergeById(remoteList, loadRevisions());
+  localStorage.setItem(REVISIONS_KEY, JSON.stringify(merged));
 }
 
 export function applyRemoteInterventions(remoteList) {
@@ -193,6 +224,16 @@ async function syncPendingDocs() {
     } catch { /* toujours hors-ligne */ }
   }
 
+  for (const id of pending.revisions) {
+    const item = loadRevisions().find(r => r.id === id);
+    if (!item) { unmarkPending('revisions', id); continue; }
+    try {
+      await fbSaveRevision(item);
+      unmarkPending('revisions', id);
+      anyChanged = true;
+    } catch { /* toujours hors-ligne */ }
+  }
+
   return anyChanged;
 }
 
@@ -206,4 +247,10 @@ export function generateNumero(interventions) {
   const year = new Date().getFullYear();
   const count = interventions.filter(i => i.numero?.startsWith(`INT-${year}`)).length + 1;
   return `INT-${year}-${String(count).padStart(4, '0')}`;
+}
+
+export function generateNumeroRevision(revisions) {
+  const year = new Date().getFullYear();
+  const count = revisions.filter(r => r.numero?.startsWith(`REV-${year}`)).length + 1;
+  return `REV-${year}-${String(count).padStart(4, '0')}`;
 }

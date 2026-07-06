@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
 import { loadInterventions } from '../store';
 
-export default function Home({ onNew, onOpen, onClients, onSettings }) {
+export default function Home({ onNew, onOpen, onClients, onSettings, onRevisions }) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const interventions = loadInterventions();
@@ -105,15 +105,15 @@ export default function Home({ onNew, onOpen, onClients, onSettings }) {
         {/* Nav rapide */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <button onClick={onClients} style={{
-            flex: 1,
-            padding: '10px',
-            background: '#fff',
-            border: '1px solid #e0e0e0',
-            borderRadius: 10,
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#1565c0'
+            flex: 1, padding: '10px', background: '#fff',
+            border: '1px solid #e0e0e0', borderRadius: 10,
+            fontSize: 13, fontWeight: 600, color: '#1565c0',
           }}>🏢 Mes clients</button>
+          <button onClick={onRevisions} style={{
+            flex: 1, padding: '10px', background: '#fff',
+            border: '1px solid #e0e0e0', borderRadius: 10,
+            fontSize: 13, fontWeight: 600, color: '#2e7d32',
+          }}>🔍 Révisions</button>
         </div>
 
         {/* Liste */}
