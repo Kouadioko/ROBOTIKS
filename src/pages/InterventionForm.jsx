@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
+import SignatureField from '../components/SignaturePad';
 import { loadInterventions, loadClients, saveIntervention, saveClient, generateId, generateNumero } from '../store';
 
 const STATUTS = [
@@ -36,72 +37,6 @@ function Section({ title, children }) {
         {title}
       </div>
       {children}
-    </div>
-  );
-}
-
-function SignatureField({ value, onChange }) {
-  const canvasRef = useRef();
-  const drawing = useRef(false);
-
-  const getPos = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    const src = e.touches ? e.touches[0] : e;
-    return [src.clientX - rect.left, src.clientY - rect.top];
-  };
-
-  const start = (e) => {
-    e.preventDefault();
-    drawing.current = true;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const [x, y] = getPos(e, canvas);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    e.preventDefault();
-    if (!drawing.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    const [x, y] = getPos(e, canvas);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stop = (e) => {
-    e.preventDefault();
-    drawing.current = false;
-    onChange(canvasRef.current.toDataURL());
-  };
-
-  const clear = () => {
-    const canvas = canvasRef.current;
-    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-    onChange('');
-  };
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: '#e65100', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Signature client
-        </label>
-        <button onClick={clear} style={{ fontSize: 12, color: '#888', background: 'none', border: 'none' }}>Effacer</button>
-      </div>
-      <canvas
-        ref={canvasRef}
-        width={340}
-        height={120}
-        style={{ border: '2px solid #e0e0e0', borderRadius: 10, background: '#ffffff', touchAction: 'none', width: '100%', height: 120, colorScheme: 'light' }}
-        onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop}
-        onTouchStart={start} onTouchMove={draw} onTouchEnd={stop}
-      />
-      {value && <div style={{ fontSize: 11, color: '#2e7d32', marginTop: 4 }}>✓ Signature enregistrée</div>}
     </div>
   );
 }
@@ -324,7 +259,7 @@ export default function InterventionForm({ interventionId, onBack, onSaved }) {
               placeholder="Prénom et nom de la personne qui signe"
             />
           </Field>
-          <SignatureField value={form.signature} onChange={v => set('signature', v)} />
+          <SignatureField valeur={form.signature} onChange={v => set('signature', v)} />
         </Section>
 
         {/* Bouton sauvegarder */}

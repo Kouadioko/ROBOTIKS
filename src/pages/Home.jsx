@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
 import { loadInterventions } from '../store';
 
-export default function Home({ onNew, onOpen, onClients, onSettings, onRevisions }) {
+export default function Home({ onNew, onOpen, onClients, onSettings, onRevisions, onLocations }) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const interventions = loadInterventions();
@@ -103,17 +103,22 @@ export default function Home({ onNew, onOpen, onClients, onSettings, onRevisions
         </div>
 
         {/* Nav rapide */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
           <button onClick={onClients} style={{
-            flex: 1, padding: '10px', background: '#fff',
+            padding: '10px 4px', background: '#fff',
             border: '1px solid #e0e0e0', borderRadius: 10,
-            fontSize: 13, fontWeight: 600, color: '#1565c0',
+            fontSize: 12, fontWeight: 600, color: '#1565c0',
           }}>🏢 Mes clients</button>
           <button onClick={onRevisions} style={{
-            flex: 1, padding: '10px', background: '#fff',
+            padding: '10px 4px', background: '#fff',
             border: '1px solid #e0e0e0', borderRadius: 10,
-            fontSize: 13, fontWeight: 600, color: '#2e7d32',
+            fontSize: 12, fontWeight: 600, color: '#2e7d32',
           }}>🔍 Révisions</button>
+          <button onClick={onLocations} style={{
+            padding: '10px 4px', background: '#fff',
+            border: '1px solid #e0e0e0', borderRadius: 10,
+            fontSize: 12, fontWeight: 600, color: '#e65100',
+          }}>📅 Locations</button>
         </div>
 
         {/* Liste */}

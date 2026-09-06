@@ -30,8 +30,8 @@ export default function Header({ title, onBack, action }) {
         }}>←</button>
       )}
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: 'uppercase' }}>ROBOTIKS</div>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>ROBOTIKS</div>
+        <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: 'uppercase' }}>{title}</div>
       </div>
       {action}
     </header>

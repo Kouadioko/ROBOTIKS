@@ -7,8 +7,14 @@ import Settings from './pages/Settings';
 import Revisions from './pages/Revisions';
 import RevisionForm from './pages/RevisionForm';
 import RevisionDetail from './pages/RevisionDetail';
-import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings, fbListenRevisions } from './firebase';
-import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, applyRemoteRevisions, syncPending } from './store';
+import Locations from './pages/Locations';
+import LocationForm from './pages/LocationForm';
+import LocationDetail from './pages/LocationDetail';
+import LocationSign from './pages/LocationSign';
+import Operateurs from './pages/Operateurs';
+import OperateurApp from './pages/OperateurApp';
+import { onAuthChange, loginWithEmail, logout, fbListenInterventions, fbListenClients, fbListenSettings, fbListenRevisions, fbListenLocations, fbListenOperateurs } from './firebase';
+import { applyRemoteInterventions, applyRemoteClients, applyRemoteSettings, applyRemoteRevisions, applyRemoteLocations, applyRemoteOperateurs, estOperateur, syncPending } from './store';
 
 // ─── Écran de connexion ───────────────────────────────
 
@@ -82,6 +88,26 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// ─── Indicateur de synchronisation ────────────────────
+// Défini hors du composant : recréé à chaque rendu, il perdrait son état.
+
+const POINTS = {
+  sync: { couleur: '#ff9800', titre: 'Synchronisation...' },
+  ok: { couleur: '#4caf50', titre: 'Synchronisé' },
+  err: { couleur: '#f44336', titre: 'Erreur sync' },
+};
+
+function SyncDot({ statut }) {
+  const point = POINTS[statut];
+  return (
+    <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9999 }}>
+      {point && (
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: point.couleur }} title={point.titre} />
+      )}
+    </div>
+  );
+}
+
 // ─── Application principale ───────────────────────────
 
 export default function App() {
@@ -89,8 +115,18 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [selectedRevisionId, setSelectedRevisionId] = useState(null);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [syncStatus, setSyncStatus] = useState(''); // '' | 'sync' | 'ok' | 'err'
+  const [, forceRefresh] = useState(0);
   const hasSyncedOnce = useRef(false);
+
+  // La liste des opérateurs arrive après le premier rendu : il faut redessiner
+  // pour basculer sur l'écran opérateur dès qu'on sait qui est connecté.
+  useEffect(() => {
+    const maj = () => forceRefresh(v => v + 1);
+    window.addEventListener('robotiks-sync', maj);
+    return () => window.removeEventListener('robotiks-sync', maj);
+  }, []);
 
   // Surveiller l'état de connexion Firebase
   useEffect(() => {
@@ -119,7 +155,15 @@ export default function App() {
       applyRemoteRevisions(list);
       sync();
     });
-    return () => { unsubInter(); unsubClients(); unsubSettings(); unsubRevisions(); };
+    const unsubLocations = fbListenLocations((list) => {
+      applyRemoteLocations(list);
+      sync();
+    });
+    const unsubOperateurs = fbListenOperateurs((list) => {
+      applyRemoteOperateurs(list);
+      sync();
+    });
+    return () => { unsubInter(); unsubClients(); unsubSettings(); unsubRevisions(); unsubLocations(); unsubOperateurs(); };
   }, [authUser]);
 
   // Une fois les données synchronisées : réessayer l'envoi des fiches
@@ -158,18 +202,23 @@ export default function App() {
     return <LoginScreen onLogin={loginWithEmail} />;
   }
 
-  // Indicateur de sync en haut
-  const SyncDot = () => (
-    <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9999 }}>
-      {syncStatus === 'sync' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff9800' }} title="Synchronisation..." />}
-      {syncStatus === 'ok' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4caf50' }} title="Synchronisé" />}
-      {syncStatus === 'err' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f44336' }} title="Erreur sync" />}
-    </div>
-  );
+  // Un opérateur ne voit que le pointage des locations.
+  if (estOperateur(authUser)) {
+    return (
+      <OperateurApp
+        user={authUser}
+        screen={screen}
+        setScreen={setScreen}
+        locationId={selectedLocationId}
+        setLocationId={setSelectedLocationId}
+        onLogout={logout}
+      />
+    );
+  }
 
   if (screen === 'form') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <InterventionForm
         interventionId={selectedId}
         onBack={() => setScreen(selectedId ? 'detail' : 'home')}
@@ -180,7 +229,7 @@ export default function App() {
 
   if (screen === 'detail') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <InterventionDetail
         interventionId={selectedId}
         onBack={() => setScreen('home')}
@@ -192,14 +241,14 @@ export default function App() {
 
   if (screen === 'clients') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <Clients onBack={() => setScreen('home')} />
     </>
   );
 
   if (screen === 'revisions') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <Revisions
         onBack={() => setScreen('home')}
         onNew={() => { setSelectedRevisionId(null); setScreen('revision-form'); }}
@@ -210,7 +259,7 @@ export default function App() {
 
   if (screen === 'revision-form') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <RevisionForm
         revisionId={selectedRevisionId}
         onBack={() => setScreen(selectedRevisionId ? 'revision-detail' : 'revisions')}
@@ -221,7 +270,7 @@ export default function App() {
 
   if (screen === 'revision-detail') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <RevisionDetail
         revisionId={selectedRevisionId}
         onBack={() => setScreen('revisions')}
@@ -231,22 +280,77 @@ export default function App() {
     </>
   );
 
+  if (screen === 'locations') return (
+    <>
+      <SyncDot statut={syncStatus} />
+      <Locations
+        onBack={() => setScreen('home')}
+        onNew={() => { setSelectedLocationId(null); setScreen('location-form'); }}
+        onOpen={(id) => { setSelectedLocationId(id); setScreen('location-detail'); }}
+        onOperateurs={() => setScreen('location-ops')}
+      />
+    </>
+  );
+
+  if (screen === 'location-form') return (
+    <>
+      <SyncDot statut={syncStatus} />
+      <LocationForm
+        locationId={selectedLocationId}
+        onBack={() => setScreen(selectedLocationId ? 'location-detail' : 'locations')}
+        onSaved={(id) => { setSelectedLocationId(id); setScreen('location-detail'); }}
+      />
+    </>
+  );
+
+  if (screen === 'location-detail') return (
+    <>
+      <SyncDot statut={syncStatus} />
+      <LocationDetail
+        locationId={selectedLocationId}
+        onBack={() => setScreen('locations')}
+        onEdit={() => setScreen('location-form')}
+        onSign={() => setScreen('location-sign')}
+        onDeleted={() => setScreen('locations')}
+      />
+    </>
+  );
+
+  if (screen === 'location-sign') return (
+    <>
+      <SyncDot statut={syncStatus} />
+      <LocationSign
+        locationId={selectedLocationId}
+        onBack={() => setScreen('location-detail')}
+        onSaved={() => setScreen('location-detail')}
+      />
+    </>
+  );
+
+  if (screen === 'location-ops') return (
+    <>
+      <SyncDot statut={syncStatus} />
+      <Operateurs onBack={() => setScreen('locations')} />
+    </>
+  );
+
   if (screen === 'settings') return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <Settings onBack={() => setScreen('home')} onLogout={logout} />
     </>
   );
 
   return (
     <>
-      <SyncDot />
+      <SyncDot statut={syncStatus} />
       <Home
         onNew={() => { setSelectedId(null); setScreen('form'); }}
         onOpen={(id) => { setSelectedId(id); setScreen('detail'); }}
         onClients={() => setScreen('clients')}
         onSettings={() => setScreen('settings')}
         onRevisions={() => setScreen('revisions')}
+        onLocations={() => setScreen('locations')}
       />
     </>
   );

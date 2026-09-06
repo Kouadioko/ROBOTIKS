@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// ============================================================================
+// ROBOTIKS — règles de sécurité Firestore
+// ----------------------------------------------------------------------------
+// Deux profils :
+//   PATRON    = tout compte connecté qui n'est PAS listé dans /operateurs.
+//               Accès complet : interventions, clients, révisions, réglages,
+//               locations, et gestion des accès opérateurs.
+//   OPÉRATEUR = compte dont l'e-mail (en minuscules) est un document de la
+//               collection /operateurs. Accès aux seules locations, et
+//               uniquement tant que son document porte actif == true.
+//
+// ⚠️ IMPORTANT — ne JAMAIS supprimer un document de /operateurs pour couper
+// un accès : sans son document, le compte redeviendrait un compte patron et
+// aurait accès à TOUT. Pour couper l'accès, passer actif à false (c'est ce que
+// fait le bouton « Révoquer » dans l'appli). Le document reste, inoffensif.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function fiche() {
+      return /databases/$(database)/documents/operateurs/$(request.auth.token.email.lower());
+    }
+
+    // listé dans /operateurs, qu'il soit actif ou révoqué
+    function estOperateur() {
+      return connecte() && exists(fiche());
+    }
+
+    function operateurActif() {
+      return estOperateur() && get(fiche()).data.actif == true;
+    }
+
+    function estPatron() {
+      return connecte() && !estOperateur();
+    }
+
+    // --- réservé au patron ---------------------------------------------------
+    match /interventions/{doc} { allow read, write: if estPatron(); }
+    match /clients/{doc}       { allow read, write: if estPatron(); }
+    match /revisions/{doc}     { allow read, write: if estPatron(); }
+    match /settings/{doc}      { allow read, write: if estPatron(); }
+
+    // --- partagé : patron + opérateurs encore actifs -------------------------
+    match /locations/{doc}     { allow read, write: if estPatron() || operateurActif(); }
+
+    // --- la liste des accès --------------------------------------------------
+    // lisible par tout compte connecté : l'appli doit pouvoir savoir qui elle a
+    // en face (et un opérateur révoqué doit pouvoir l'apprendre).
+    // Modifiable par le patron seulement.
+    match /operateurs/{email} {
+      allow read:  if connecte();
+      allow write: if estPatron();
+    }
+
+    // --- tout le reste est fermé ---------------------------------------------
+    match /{document=**} { allow read, write: if false; }
+  }
+}

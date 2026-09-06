@@ -15,7 +15,10 @@ const DARK = [26, 26, 46];
 const GRAY = [100, 100, 100];
 const LIGHT_GRAY = [240, 240, 240];
 
-export async function generatePDF(intervention, settings = {}) {
+// telechargementDirect = true : on saute le partage natif et on enregistre
+// directement le fichier. Utile quand l'utilisateur veut garder le PDF plutot
+// que de l'envoyer tout de suite.
+export async function generatePDF(intervention, settings = {}, telechargementDirect = false) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
   const margin = 15;
@@ -245,7 +248,7 @@ export async function generatePDF(intervention, settings = {}) {
   try {
     const blob = doc.output('blob');
     const file = new File([blob], filename, { type: 'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (!telechargementDirect && navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title: `Fiche intervention ${intervention.numero}`,
         text: `Intervention du ${formatDate(intervention.dateIntervention)} — ${intervention.clientNom || ''}`,

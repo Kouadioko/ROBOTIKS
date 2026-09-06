@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import StatusBadge from '../components/StatusBadge';
-import { loadInterventions, deleteIntervention, loadSettings } from '../store';
+import { loadInterventions, deleteIntervention, saveIntervention, loadSettings } from '../store';
 import { generatePDF } from '../utils/pdf';
 
 export default function InterventionDetail({ interventionId, onBack, onEdit, onDeleted }) {
@@ -17,11 +17,11 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
     onDeleted();
   };
 
-  const handlePDF = async () => {
+  const handlePDF = async (telechargementDirect = false) => {
     setSharing(true);
     try {
       const settings = loadSettings();
-      await generatePDF(intervention, settings);
+      await generatePDF(intervention, settings, telechargementDirect);
     } catch (e) {
       if (e.name !== 'AbortError') {
         alert(`Erreur PDF : ${e.message || 'inconnue'}`);
@@ -125,6 +125,19 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           </Card>
         )}
 
+        {intervention.status !== 'terminee' && (
+          <button
+            onClick={async () => {
+              await saveIntervention({ ...intervention, status: 'terminee', updatedAt: new Date().toISOString() });
+              window.dispatchEvent(new Event('robotiks-sync'));
+            }}
+            style={{
+              width: '100%', padding: 14, background: '#2e7d32', color: '#fff',
+              border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, marginTop: 4,
+            }}
+          >✅ Marquer Terminée — facture envoyée</button>
+        )}
+
       </div>
 
       {/* Actions fixes en bas */}
@@ -136,8 +149,8 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
         gap: 10,
         boxShadow: '0 -4px 12px rgba(0,0,0,0.1)'
       }}>
-        <button onClick={handlePDF} disabled={sharing} style={{
-          flex: 3,
+        <button onClick={() => handlePDF(false)} disabled={sharing} style={{
+          flex: 2,
           padding: '14px',
           background: sharing ? '#ccc' : '#e65100',
           color: '#fff',
@@ -146,8 +159,18 @@ export default function InterventionDetail({ interventionId, onBack, onEdit, onD
           fontSize: 15,
           fontWeight: 700
         }}>
-          {sharing ? '⏳ Génération...' : navigator.canShare ? '📤 Envoyer PDF' : '📄 Télécharger PDF'}
+          {sharing ? '⏳ Génération...' : '📤 Envoyer'}
         </button>
+        <button onClick={() => handlePDF(true)} disabled={sharing} style={{
+          flex: 2,
+          padding: '14px',
+          background: '#fff',
+          color: '#e65100',
+          border: '1px solid #e65100',
+          borderRadius: 12,
+          fontSize: 15,
+          fontWeight: 700
+        }}>📄 Télécharger</button>
         <button onClick={handleDelete} style={{
           flex: 1,
           padding: '14px',

@@ -3,12 +3,15 @@ import {
   fbSaveClient, fbDeleteClient,
   fbSaveSettings,
   fbSaveRevision, fbDeleteRevision,
+  fbSaveLocation, fbDeleteLocation,
 } from './firebase';
 
 const INTERVENTIONS_KEY = 'robotiks_interventions';
 const CLIENTS_KEY = 'robotiks_clients';
 const SETTINGS_KEY = 'robotiks_settings';
 const REVISIONS_KEY = 'robotiks_revisions';
+const LOCATIONS_KEY = 'robotiks_locations';
+const OPERATEURS_KEY = 'robotiks_operateurs';
 const MIGRATED_KEY = 'robotiks_migrated_v2';
 const PENDING_SYNC_KEY = 'robotiks_pending_sync';
 
@@ -30,13 +33,48 @@ export function loadRevisions() {
   try { return JSON.parse(localStorage.getItem(REVISIONS_KEY) || '[]'); } catch { return []; }
 }
 
+export function loadLocations() {
+  try { return JSON.parse(localStorage.getItem(LOCATIONS_KEY) || '[]'); } catch { return []; }
+}
+
+export function loadLocation(id) {
+  return loadLocations().find(l => l.id === id) || null;
+}
+
+// ─── Accès opérateurs (lecture seule côté local) ──────
+
+export function loadOperateurs() {
+  try { return JSON.parse(localStorage.getItem(OPERATEURS_KEY) || '[]'); } catch { return []; }
+}
+
+export function applyRemoteOperateurs(list) {
+  localStorage.setItem(OPERATEURS_KEY, JSON.stringify(list));
+}
+
+function ficheOperateur(user) {
+  const mail = String(user?.email || '').toLowerCase();
+  if (!mail) return null;
+  return loadOperateurs().find(o => String(o.email).toLowerCase() === mail) || null;
+}
+
+// Inscrit dans la liste, actif OU révoqué : dans les deux cas ce n'est pas un
+// compte patron, donc l'appli reste sur l'écran opérateur.
+export function estOperateur(user) {
+  return !!ficheOperateur(user);
+}
+
+export function operateurEstActif(user) {
+  const o = ficheOperateur(user);
+  return !!o && o.actif !== false;
+}
+
 // ─── File d'attente : fiches dont l'envoi cloud a échoué ──
 
 function loadPendingSync() {
   try {
-    return { interventions: [], clients: [], settings: false, revisions: [], ...JSON.parse(localStorage.getItem(PENDING_SYNC_KEY) || '{}') };
+    return { interventions: [], clients: [], settings: false, revisions: [], locations: [], ...JSON.parse(localStorage.getItem(PENDING_SYNC_KEY) || '{}') };
   } catch {
-    return { interventions: [], clients: [], settings: false, revisions: [] };
+    return { interventions: [], clients: [], settings: false, revisions: [], locations: [] };
   }
 }
 
@@ -116,6 +154,29 @@ export async function deleteRevision(id) {
   try { await fbDeleteRevision(id); } catch { /* hors-ligne */ }
 }
 
+export async function saveLocation(location) {
+  const fiche = { ...location, updatedAt: new Date().toISOString() };
+  const list = loadLocations();
+  const idx = list.findIndex(l => l.id === fiche.id);
+  if (idx >= 0) list[idx] = fiche; else list.unshift(fiche);
+  localStorage.setItem(LOCATIONS_KEY, JSON.stringify(list));
+  try {
+    await fbSaveLocation(fiche);
+    unmarkPending('locations', fiche.id);
+  } catch {
+    markPending('locations', fiche.id); // hors-ligne : sera resynchronisé
+  }
+  window.dispatchEvent(new Event('robotiks-sync'));
+}
+
+export async function deleteLocation(id) {
+  const list = loadLocations();
+  localStorage.setItem(LOCATIONS_KEY, JSON.stringify(list.filter(l => l.id !== id)));
+  unmarkPending('locations', id);
+  try { await fbDeleteLocation(id); } catch { /* hors-ligne */ }
+  window.dispatchEvent(new Event('robotiks-sync'));
+}
+
 export async function saveSettings(s) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   try {
@@ -163,6 +224,11 @@ export function applyRemoteInterventions(remoteList) {
 export function applyRemoteClients(remoteList) {
   const merged = mergeById(remoteList, loadClients());
   localStorage.setItem(CLIENTS_KEY, JSON.stringify(merged));
+}
+
+export function applyRemoteLocations(remoteList) {
+  const merged = mergeById(remoteList, loadLocations());
+  localStorage.setItem(LOCATIONS_KEY, JSON.stringify(merged));
 }
 
 export function applyRemoteSettings(settings) {
@@ -224,6 +290,16 @@ async function syncPendingDocs() {
     } catch { /* toujours hors-ligne */ }
   }
 
+  for (const id of pending.locations) {
+    const item = loadLocations().find(l => l.id === id);
+    if (!item) { unmarkPending('locations', id); continue; }
+    try {
+      await fbSaveLocation(item);
+      unmarkPending('locations', id);
+      anyChanged = true;
+    } catch { /* toujours hors-ligne */ }
+  }
+
   for (const id of pending.revisions) {
     const item = loadRevisions().find(r => r.id === id);
     if (!item) { unmarkPending('revisions', id); continue; }
@@ -247,6 +323,12 @@ export function generateNumero(interventions) {
   const year = new Date().getFullYear();
   const count = interventions.filter(i => i.numero?.startsWith(`INT-${year}`)).length + 1;
   return `INT-${year}-${String(count).padStart(4, '0')}`;
+}
+
+export function generateNumeroLocation(locations) {
+  const year = new Date().getFullYear();
+  const count = locations.filter(l => l.numero?.startsWith(`LOC-${year}`)).length + 1;
+  return `LOC-${year}-${String(count).padStart(4, '0')}`;
 }
 
 export function generateNumeroRevision(revisions) {

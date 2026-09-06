@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// ============================================================================
+// FILET DE SÉCURITÉ — à déployer UNIQUEMENT si firestore.rules te bloque.
+// Ces règles reviennent au comportement le plus simple : tout compte connecté
+// a accès à tout. C'est l'équivalent de la situation d'avant le module
+// Locations, en un peu plus permissif (les nouvelles collections passent).
+//
+//   firebase deploy --only firestore:rules --project robotiks-2d0c8
+//   (après avoir copié ce fichier sur firestore.rules)
+//
+// ⚠️ Avec ces règles, un opérateur voit TOUT depuis son téléphone. À n'utiliser
+// que le temps de débloquer la situation, jamais en fonctionnement normal.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
